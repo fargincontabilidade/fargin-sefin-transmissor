@@ -1,0 +1,17 @@
+{
+  "name": "Monstrin World",
+  "short_name": "Monstrin",
+  "description": "RPG de exploração, captura e evolução de criaturas.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0f1226",
+  "theme_color": "#1d2140",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "monstrin-world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Monstrin World — RPG de exploração, captura e evolução de criaturas para navegador.",
+  "scripts": {
+    "start": "npx --yes http-server . -p 8080 -c-1",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

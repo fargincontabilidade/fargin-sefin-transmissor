@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#8fd27a}</style></head><body>
+<script type="module">
+import { PLAYER_LOOKS, NPC_LOOKS, drawCharacterSheet, CHAR_W, CHAR_H } from '../src/art/characters.js';
+const looks=[...PLAYER_LOOKS, ...Object.values(NPC_LOOKS)];
+for (const l of looks.slice(0,2)) { const c=document.createElement('canvas'); c.width=CHAR_W*4; c.height=CHAR_H*4; c.style.width=(CHAR_W*2)+'px'; drawCharacterSheet(c,l); document.body.appendChild(c); }
+const row=document.createElement('div'); document.body.appendChild(row);
+for (const l of looks) { const c=document.createElement('canvas'); c.width=CHAR_W; c.height=CHAR_H; c.style.width='80px'; const full=document.createElement('canvas'); full.width=CHAR_W*4; full.height=CHAR_H*4; drawCharacterSheet(full,l); c.getContext('2d').drawImage(full,0,0); row.appendChild(c);}
+</script></body></html>

@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#7cc46a;font-family:sans-serif}#g{display:flex;flex-wrap:wrap;gap:6px;padding:8px}.c{background:#8fd27a;border-radius:8px;text-align:center;font-size:12px}</style></head><body><div id="g"></div>
+<script type="module">
+import { SPECIES } from '../src/data/species.js';
+import { drawMonstrin } from '../src/art/creatures.js';
+const g=document.getElementById('g');
+for (const s of Object.values(SPECIES)) { const d=document.createElement('div'); d.className='c'; const c=document.createElement('canvas'); c.width=256;c.height=256; c.style.width='170px'; drawMonstrin(c.getContext('2d'), s.art); d.appendChild(c); d.append(document.createElement('br'), s.name); g.appendChild(d);}
+window.done=true;
+</script></body></html>

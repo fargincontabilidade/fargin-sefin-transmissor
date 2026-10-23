@@ -1,0 +1,11 @@
+import { open, sleep } from './e2e-lib.mjs';
+import { fixture } from './fixture.mjs';
+const out = process.argv[2];
+const { b, p, errors } = await open('http://localhost:8080/index.html', { storage: fixture({ map: 'vila_aurora', x: 12.5, y: 23.6 }) });
+await sleep(2500); await p.click('text=Continuar'); await sleep(2000);
+await p.keyboard.down('ArrowLeft'); await sleep(60); await p.keyboard.up('ArrowLeft'); await sleep(200);
+await p.keyboard.press('Space'); await sleep(1200);
+console.log('NPC:', await p.evaluate(() => document.querySelector('.dialog .name')?.textContent), '|', await p.evaluate(() => document.querySelector('.dialog .text')?.textContent));
+await p.screenshot({ path: `${out}/npc.png` });
+console.log(errors.filter(e => !/GL Driver|swiftshader|GPU stall/.test(e)).join('\n'));
+await b.close();

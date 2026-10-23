@@ -1,0 +1,22 @@
+import { open, sleep } from './e2e-lib.mjs';
+const out = process.argv[2];
+const { b, p, errors } = await open('http://localhost:8080/index.html');
+await sleep(2500);
+await p.click('text=Nova aventura');
+await sleep(400);
+await p.fill('.text-input', 'Ana');
+await p.click('.look >> nth=1');
+await p.fill('.text-input', 'Ana');
+await p.click('text=Começar aventura');
+await sleep(2500);
+await p.screenshot({ path: out + '/house.png' });
+await p.keyboard.press('Space'); await sleep(300); await p.keyboard.press('Space'); await sleep(1500);
+await p.keyboard.press('Space'); await sleep(300); await p.keyboard.press('Space'); await sleep(500);
+// sair de casa: andar para baixo
+await p.keyboard.down('ArrowDown'); await sleep(1600); await p.keyboard.up('ArrowDown');
+await sleep(1500);
+await p.screenshot({ path: out + '/vila.png' });
+const st = await p.evaluate(() => ({ map: __mw.app.world.def.id, x: __mw.app.world.player.x, y: __mw.app.world.player.y }));
+console.log(JSON.stringify(st));
+console.log(errors.filter(e => !e.includes('GL Driver') && !e.includes('swiftshader')).join('\n') || 'no errors');
+await b.close();
