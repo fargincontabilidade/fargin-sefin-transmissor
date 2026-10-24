@@ -33,6 +33,14 @@ Esc/M para o menu. No celular: direcional virtual, botão **A** e botão **☰**
 - Salvamento automático local com cópia de segurança, exportar/importar progresso.
 - Derrota: o jogador volta ao Centro Monstrin com a equipe curada, sem perder progresso.
 
+## Arena de Duelos (Regulamento v1.0)
+
+Acesse pela tela inicial ou pelo menu do jogo (**⚔️ Arena de Duelos**). Duelo de cartas de
+Monstrins contra o computador: baralho de 15 cartas, mão de 5, 1 principal + até 2 secundários,
+escolhas secretas e resolução simultânea, Energia de Duelo, escudos, condições, retaliação,
+drenagem, reviver e vitória por 5 KOs. Detalhes, lacunas do regulamento e soluções adotadas:
+[`docs/DUELOS.md`](docs/DUELOS.md).
+
 ## Onde mudar cada coisa
 
 | Quero mudar...                  | Arquivo |
@@ -45,6 +53,7 @@ Esc/M para o menu. No celular: direcional virtual, botão **A** e botão **☰**
 | Diálogos e NPCs                 | `src/data/scripts.js` e os mapas |
 | Mapas e regiões                 | `src/data/maps/` (registro em `index.js`) |
 | Vantagens entre elementos       | `src/data/elements.js` |
+| Cartas e regras do duelo        | `src/duel/cards.js` e `src/duel/rules.js` |
 
 ## Arquitetura
 

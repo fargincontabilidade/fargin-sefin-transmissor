@@ -15,6 +15,7 @@ import {
 import { art, lookFor } from '../art/registry.js';
 import { sfx } from '../audio/sfx.js';
 import { controls } from './controls.js';
+import { arena } from '../duel/arena.js';
 
 const elBadge = (elId) => { const e = ELEMENTS[elId]; return h('span', { class: 'badge', style: { background: e.color } }, `${e.icon} ${e.name}`); };
 const rarityBadge = (r) => { const x = RARITY[r]; return h('span', { class: 'badge', style: { background: x.color } }, x.name); };
@@ -81,6 +82,7 @@ export const menus = {
         tile('🎒', 'Inventário', () => this.openBag()),
         tile('🗺️', 'Mapa', () => this.openMap()),
         tile('📜', 'Missões', () => this.openQuests()),
+        tile('⚔️', 'Arena de Duelos', () => { ui.close(entry); menus.showHud(false); arena.open({ onExit: () => { menus.showHud(true); menus.refreshHud(); } }); }),
         tile('💾', 'Salvar', () => { const r = app.save(); ui.toast(r.ok ? 'Progresso salvo neste aparelho!' : 'Não foi possível salvar.'); sfx.play('select'); }),
         tile('⚙️', 'Configurações', () => this.openSettings()),
       ));

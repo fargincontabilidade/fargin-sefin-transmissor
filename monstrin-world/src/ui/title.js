@@ -6,6 +6,7 @@ import { PLAYER_LOOKS } from '../art/characters.js';
 import { art } from '../art/registry.js';
 import { sfx } from '../audio/sfx.js';
 import { menus } from './menus.js';
+import { arena } from '../duel/arena.js';
 import { getSpecies } from '../data/species.js';
 
 export function showTitle({ onContinue, onNewGame }) {
@@ -26,6 +27,7 @@ export function showTitle({ onContinue, onNewGame }) {
     }
     newGameForm((data) => { close(); onNewGame(data); });
   } }, '✨ Nova aventura'));
+  buttons.append(h('button', { class: 'btn green', onclick: () => { sfx.play('select'); arena.open(); } }, '⚔️ Arena de Duelos'));
   buttons.append(h('button', { class: 'btn ghost', onclick: () => menus.openSettings() }, '⚙️ Configurações'));
   el.append(mons, logo, buttons, h('div', { class: 'version' }, `v${CONFIG.VERSION} · demonstração`));
   ui.root.append(el);
