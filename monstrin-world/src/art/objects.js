@@ -403,6 +403,15 @@ export const OBJECTS = {
       ellipse(ctx, 96, 64, 26, 16); ctx.fillStyle = '#ffd23f'; ctx.fill();
     },
   },
+  flowerbed: {
+    w: 104, h: 78, foot: [1, 1], solid: false,
+    draw(ctx) {
+      for (const [x, y, c] of [[30, 50, '#ffffff'], [52, 40, '#ffe36b'], [74, 52, '#ffffff'], [44, 62, '#ff9de2'], [64, 64, '#ffffff']]) {
+        for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; ellipse(ctx, x + Math.cos(a) * 5, y + Math.sin(a) * 5, 4.5, 4.5); ctx.fillStyle = c; ctx.fill(); }
+        ellipse(ctx, x, y, 3, 3); ctx.fillStyle = '#ffcf3a'; ctx.fill();
+      }
+    },
+  },
   mat: {
     w: T, h: T, foot: [1, 1], solid: false, ground: true,
     draw(ctx) { roundRect(ctx, 6, 16, 52, 34, 8); fillStroke(ctx, '#5aa86a', '#2a5a3a', 2.5); ctx.fillStyle = rgba('#fff', 0.4); ctx.fillRect(14, 30, 36, 4); },

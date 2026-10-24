@@ -5,6 +5,7 @@ import { CONFIG } from '../config.js';
 import { app } from '../app.js';
 import { getMap } from '../data/maps/index.js';
 import { OBJECTS } from '../art/objects.js';
+import { artFor } from '../art/worldArt.js';
 import { paintGround, isWalkableChar } from '../art/terrain.js';
 import { CharacterEntity, Follower, WildEntity, NpcEntity, DIR_VEC } from './entities.js';
 import { controls } from '../ui/controls.js';
@@ -12,7 +13,8 @@ import { ui } from '../ui/ui.js';
 import { menus } from '../ui/menus.js';
 import { sfx } from '../audio/sfx.js';
 import { SCRIPTS, TRAINERS } from '../data/scripts.js';
-import { createMonstrin, displayName } from '../core/monstrin.js';
+import { createMonstrin, displayName, isFainted } from '../core/monstrin.js';
+import { burst, ring, glowAt, wait } from '../battle/effects.js';
 import { weightedPick, randInt } from '../core/rng.js';
 import { getSpecies } from '../data/species.js';
 import { getItem } from '../data/items.js';
@@ -81,6 +83,7 @@ export class WorldScene extends Phaser.Scene {
     const def = getMap(mapId);
     this.def = def;
     app.game.s.player.mapId = mapId;
+    app.game.visitCenter(mapId); // lembra o último Centro Monstrin visitado
     this.buildGround(def);
     this.buildObjects(def);
     this.buildCollision(def);
@@ -127,11 +130,15 @@ export class WorldScene extends Phaser.Scene {
       const [fw, fh] = od.foot;
       let key = `obj_${o.type}`;
       if (o.type === 'chest' && o.id && app.game.flag(`chest_${o.id}`)) key = 'obj_chestOpen';
-      const tree = ['oak', 'oak2', 'pine', 'blossom'].includes(o.type);
+      // Ilustração do Kit Visual quando existir; senão, o desenho por código
+      const art = o.type === 'chest' ? null : artFor(this, o.type, o.x, o.y);
+      const tree = art ? art.tree : ['oak', 'oak2', 'pine', 'blossom'].includes(o.type);
       const baseY = { oak: 200, oak2: 200, blossom: 200, pine: 212 }[o.type] ?? od.h;
       const x = (o.x + fw / 2) * T;
-      const y = (o.y + fh) * T - (tree ? 10 : 0);
-      const img = this.add.image(x, y, key).setOrigin(0.5, baseY / od.h);
+      const y = (o.y + fh) * T - (tree ? (art ? 12 : 10) : (art ? 2 : 0));
+      const img = art
+        ? this.add.image(x, y, art.key).setOrigin(0.5, art.originY).setScale(art.sx, art.sy)
+        : this.add.image(x, y, key).setOrigin(0.5, baseY / od.h);
       img.setDepth(od.ground ? -50000 + o.y : (o.y + fh) * T - 4);
       if (tree) {
         img.setAngle(-0.6);
@@ -185,8 +192,11 @@ export class WorldScene extends Phaser.Scene {
   refreshFollower() {
     const mon = app.game.follower();
     if (!mon) { if (this.follower) { this.follower.destroy(); this.follower = null; } return; }
-    if (this.follower) { this.follower.setMon(mon); return; }
-    this.follower = new Follower(this, mon, this.player);
+    if (this.follower) this.follower.setMon(mon);
+    else this.follower = new Follower(this, mon, this.player);
+    // Acompanhante desmaiado aparece escurecido até ser recuperado no Centro
+    const sp = this.follower.view.sprite;
+    if (isFainted(mon)) { sp.setTint(0x8a8a9a); sp.setAlpha(0.75); } else { sp.clearTint(); sp.setAlpha(1); }
   }
 
   buildAmbient(def) {
@@ -428,13 +438,28 @@ export class WorldScene extends Phaser.Scene {
       give: (id, n = 1) => { game.addItem(id, n); ui.toast(`Recebeu ${n}x ${getItem(id).name}`, art.itemUrl(id)); sfx.play('item'); },
       startQuest: (id) => game.startQuest(id),
       completeQuest: (id) => game.completeQuest(id),
+      // Animação da máquina de recuperação do Centro Monstrin + cura completa.
       healParty: async () => {
+        const machine = this.def.objects.find((o) => o.type === 'healer');
+        const mx = machine ? (machine.x + 1) * T : this.player.x;
+        const my = machine ? (machine.y + 1) * T - 60 : this.player.y - 60;
         sfx.play('heal');
-        await ui.fade(true);
+        const n = Math.max(1, Math.min(6, game.party().length));
+        for (let i = 0; i < n; i++) {
+          glowAt(this, mx, my, 0x5ad1ff, 1.6, 420);
+          burst(this, mx, my, { tex: 'p_spark', tint: [0x5ad1ff, 0xffffff, 0x9dffb5], count: 10, speed: [40, 140], scale: [0.5, 0] });
+          sfx.play('select');
+          await wait(280);
+        }
+        ring(this, mx, my, { tint: 0x9dffb5, to: 1.6, sy: 0.6 });
+        ui.flash();
         game.healAll();
-        await new Promise((r) => setTimeout(r, 450));
-        await ui.fade(false);
+        sfx.play('levelup');
+        burst(this, this.player.x, this.player.y - 60, { tex: 'p_star', tint: [0xffe14a, 0xffffff, 0x9dffb5], count: 22, speed: [80, 220], scale: [0.6, 0] });
+        this.refreshFollower();
+        await wait(500);
         menus.refreshHud();
+        app.save();
       },
       chooseStarter: () => menus.chooseStarter(),
       giveStarter: async (speciesId) => {
@@ -479,6 +504,7 @@ export class WorldScene extends Phaser.Scene {
 
   // ---------------- Monstrins selvagens ----------------
   spawnWild(zone, initial = false) {
+    if (!CONFIG.WILD_MONSTRINS) return; // desativado: Monstrins agora são cartas
     const live = this.wilds.filter((w) => w.zone === zone).length;
     if (live >= zone.max) return;
     const p = this.player;
@@ -566,7 +592,8 @@ export class WorldScene extends Phaser.Scene {
     } else if (res.result === 'win') game.s.stats.wins += 1;
     // Evoluções
     if (res.evolve && res.evolve.length) await playEvolutions(res.evolve);
-    if (res.result === 'lose') {
+    // Derrota por todos os Monstrins desmaiados: volta ao Centro (render-se não teleporta)
+    if (res.result === 'lose' && res.reason !== 'surrender') {
       await this.recoverFromDefeat();
     }
     this.refreshFollower();
@@ -574,15 +601,18 @@ export class WorldScene extends Phaser.Scene {
     app.save();
   }
 
+  // Todos os Monstrins desmaiaram: o jogador é levado ao último Centro
+  // Monstrin visitado. A equipe continua desmaiada até falar com o atendimento.
   async recoverFromDefeat() {
-    await ui.say('Todos os seus Monstrins desmaiaram... Você correu de volta ao Centro Monstrin.');
+    await ui.say('Todos os seus Monstrins foram derrotados... Você correu com eles até o Centro Monstrin.');
     await ui.fade(true);
     const r = app.game.recoverFromDefeat();
     const p = app.game.s.player;
     this.loadMap(p.mapId, p.x * T, p.y * T, p.dir, { banner: false });
     this.follower?.resetBehind();
+    app.save();
     await ui.fade(false);
-    await ui.say(`Enfermeira Lia: Seus Monstrins estão curados! Não desanime, toda derrota é um aprendizado.${r.lost ? ` (Você perdeu ${r.lost} moedas.)` : ''}`, { name: 'Enfermeira Lia', portrait: art.lookUrl(lookFor('enfermeira')) });
+    await ui.say(`Seus Monstrins estão desmaiados e precisam de cuidados. Fale comigo no balcão para recuperá-los!${r.lost ? ` (Você perdeu ${r.lost} moedas.)` : ''}`, { name: 'Enfermeira Lia', portrait: art.lookUrl(lookFor('enfermeira')) });
   }
 
   checkTrainerSight() {

@@ -14,9 +14,21 @@ function cached(key, make) {
   return urlCache.get(key);
 }
 
-// Imagens externas (ex.: ilustrações do Duelo Elemental) podem ser
-// registradas aqui por espécie e passam a ser usadas na interface.
-export const CUSTOM_ART = {};
+// Ilustrações do Duelo Elemental por espécie. Elas são carregadas na cena
+// de carregamento (BootScene) e substituem o desenho gerado por código no
+// mapa, na batalha e nos menus. Espécies sem ilustração usam o desenho gerado.
+export const CUSTOM_ART = {
+  brasito: 'img/ignix.webp', brasador: 'img/lobrasa.webp', vulcarion: 'img/dracoflama.webp',
+  gotinho: 'img/axola.webp', marolho: 'img/tubaronda.webp', maremonte: 'img/leviamar.webp',
+  brotim: 'img/folhebre.webp', ramalhao: 'img/cervifolha.webp', silvarok: 'img/bosquerex.webp',
+};
+
+// Desenha a ilustração no mesmo enquadramento do desenho gerado (256x256,
+// pés da criatura perto de y=236, que é a origem usada pelos sprites).
+function drawCustomArt(ctx, img) {
+  const box = 240;
+  ctx.drawImage(img, (MON_CANVAS - box) / 2, 238 - box, box, box);
+}
 
 export const art = {
   monUrl(speciesId) {
@@ -67,6 +79,14 @@ function addSheet(scene, key, look) {
 export function generateTextures(scene) {
   // Monstrins (normal e piscando)
   for (const s of Object.values(SPECIES)) {
+    const srcKey = `src_${s.id}`;
+    if (CUSTOM_ART[s.id] && scene.textures.exists(srcKey)) {
+      const img = scene.textures.get(srcKey).getSourceImage();
+      addCanvasTexture(scene, `mon_${s.id}`, MON_CANVAS, MON_CANVAS, (ctx) => drawCustomArt(ctx, img));
+      addCanvasTexture(scene, `mon_${s.id}_b`, MON_CANVAS, MON_CANVAS, (ctx) => drawCustomArt(ctx, img));
+      continue;
+    }
+    delete CUSTOM_ART[s.id];
     addCanvasTexture(scene, `mon_${s.id}`, MON_CANVAS, MON_CANVAS, (ctx) => drawMonstrin(ctx, s.art));
     addCanvasTexture(scene, `mon_${s.id}_b`, MON_CANVAS, MON_CANVAS, (ctx) => drawMonstrin(ctx, s.art, { blink: true }));
   }

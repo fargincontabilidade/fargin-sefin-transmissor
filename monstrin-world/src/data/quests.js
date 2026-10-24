@@ -35,6 +35,6 @@ export const QUESTS = {
     id: 'desafio_caio', name: 'Desafio no bosque', giver: 'Treinador Caio',
     desc: 'O treinador Caio desafiou você para uma batalha no Bosque Sussurrante.',
     objectives: [{ type: 'defeat', trainer: 'caio', text: 'Derrote o Treinador Caio' }],
-    rewards: { items: { runa_raio: 1, erva_despertar: 1 }, coins: 400 },
+    rewards: { items: { runa_raio: 1, super_tonico: 1 }, coins: 400 },
   },
 };

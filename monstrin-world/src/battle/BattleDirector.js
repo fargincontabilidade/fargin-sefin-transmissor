@@ -91,6 +91,7 @@ export async function runBattle(scene, opts) {
   ourView.setSpecies(lead.speciesId);
   ourView.setVisible(true);
   ourView.sprite.setAlpha(1);
+  ourView.sprite.clearTint();
 
   // anéis da arena
   const ringA = scene.add.image(ourPos.x, ourPos.y, 'battle_ring').setDepth(-30000).setScale(0.6).setAlpha(0);
@@ -167,12 +168,12 @@ export async function runBattle(scene, opts) {
     const where = game.addMonstrin(mon);
     game.s.stats.captures += 1;
     game.questEvent('capture', { species: mon.speciesId });
-    await hud.log(`Você capturou ${getSpecies(mon.speciesId).name}! ${where === 'party' ? 'Ele entrou para a sua equipe.' : 'Ele foi enviado para a sua Coleção.'}`, 2200);
+    await hud.log(`Você capturou ${getSpecies(mon.speciesId).name}! ${where === 'party' ? 'Ele entrou para a sua equipe.' : 'Ele foi enviado para a sua Reserva.'}`, 2200);
   } else if (result === 'fled') {
     // a animação já foi feita
   } else if (result === 'lose') {
     sfx.play('defeat');
-    await hud.log(battle.useTrainerHp && battle.sides[0].trainerHp <= 0 ? 'Seus PV de treinador chegaram a zero...' : 'Você não tem mais Monstrins aptos para batalhar...', 1800);
+    await hud.log(battle.endReason === 'surrender' ? 'Você se rendeu. Seus Monstrins continuam com os PV que tinham.' : 'Todos os seus Monstrins foram derrotados...', 1800);
   }
   hud.close();
   ui.blockingFlag = false;
@@ -200,7 +201,7 @@ export async function runBattle(scene, opts) {
   }
   sfx.music(scene.def.music || (scene.def.ambient === 'interior' ? 'interior' : 'village'));
   menus.refreshHud();
-  return { result, evolve };
+  return { result, evolve, reason: battle.endReason };
 }
 
 async function summonFx(scene, view, fromEntity, speciesId) {
@@ -246,15 +247,6 @@ async function animateEvent(scene, battle, hud, ev, views, pt, trainers, game) {
     case 'damage': {
       const target = pt(ev.side);
       if (ev.source === 'burn') await burnFx(scene, target);
-      if (ev.target === 'trainer') {
-        const tr = trainers[ev.side];
-        if (tr) { tr.sprite.setTint(0xff7a7a); scene.cameras.main.shake(260, 0.01); await wait(120); tr.sprite.clearTint(); }
-        floatText(scene, tr ? tr.x : target.x, (tr ? tr.y : target.y) - 110, `-${ev.amount}`, '#ffb36b', 40);
-        sfx.play('superhit');
-        hud.setTrainerHp(ev.side, ev.hp, ev.maxHp);
-        await hud.log(ev.text, 1100);
-        break;
-      }
       const big = ev.eff > 1 || ev.crit;
       const hr = hitReaction(scene, target, { big });
       floatText(scene, target.x, target.y - target.h - 10, `-${ev.amount}`, ev.eff > 1 ? '#ffe14a' : ev.eff < 1 ? '#c8d0e0' : '#ffffff', ev.eff > 1 ? 42 : 34);
@@ -298,8 +290,9 @@ async function animateEvent(scene, battle, hud, ev, views, pt, trainers, game) {
       v.sprite.setAlpha(1); v.shadow.setAlpha(1); v.extraScale = 1;
       hud.setMon(ev.side, null);
       await hud.log(ev.text, 1000);
-      if (battle.useTrainerHp && !battle.over && !battle.hasHealthy(ev.side)) {
-        await hud.log(ev.side === 0 ? 'Você está sem Monstrins! Seus PV de treinador estão expostos!' : `${battle.sides[1].name} está sem Monstrins! Ataque diretamente!`, 1400);
+      if (!battle.over && battle.hasHealthy(ev.side)) {
+        const left = battle.healthyIndexes(ev.side).length;
+        await hud.log(ev.side === 0 ? `Escolha outro Monstrin para continuar! (${left} apto${left > 1 ? 's' : ''})` : `${battle.sides[1].name} ainda tem ${left} Monstrin${left > 1 ? 's' : ''}!`, 1100);
       }
       break;
     }

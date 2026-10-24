@@ -76,9 +76,16 @@ numa versão 1.1.
 15. **Itens em PvE.** Implementado o "Tônico de Duelo" (cura 30 PV), 2 usos por partida, consome a
     ação principal e é aplicado antes dos ataques, como as curas comuns. Pode ser desligado.
 
-## Ponto que precisa da sua decisão
+## Pontos que precisam da sua decisão
 
-O modo de exploração (RPG) ainda usa as batalhas por turnos criadas antes do regulamento, com
-"PV do treinador". O regulamento diz que, no **duelo de cartas**, não existem PV do treinador.
-A Arena de Duelos segue o regulamento; as batalhas do mapa continuam como estavam. Sugestão para
-a v1.1: decidir se as batalhas contra treinadores no mapa passam a usar o duelo de cartas.
+**Editor de decks (menu Coleção/Decks).** Ele foi criado antes do regulamento, com regras
+provisórias diferentes: 8 a 30 cartas, até 3 cópias e cartas de Técnica e Item no deck. O
+regulamento v1.0 define 15 cartas, somente Monstrins e até 2 cópias. O editor não foi alterado.
+Na Arena, o seu deck ativo só aparece como opção se cumprir o regulamento (e se todas as
+espécies tiverem ficha de duelo); caso contrário, a Arena explica o motivo. Sugestão: ajustar o
+editor para as regras do regulamento.
+
+**Batalhas do mapa.**
+
+As batalhas contra treinadores no mapa usam o sistema de batalha do RPG (já sem PV do
+treinador). Sugestão para a v1.1: decidir se elas passam a ser duelos de cartas na Arena.

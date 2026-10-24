@@ -2,7 +2,6 @@
 // Recebe ações e devolve uma lista de eventos que a parte visual anima.
 // Foi separado da parte visual para permitir, no futuro, um modo em tempo
 // real reaproveitando criaturas, ataques, dano e efeitos.
-import { CONFIG } from '../config.js';
 import { getMove } from '../data/moves.js';
 import { getSpecies } from '../data/species.js';
 import { getItem } from '../data/items.js';
@@ -36,30 +35,26 @@ export function calcDamage(attacker, defender, move, opts = {}) {
   return { damage: dmg, eff, crit: crit > 1 };
 }
 
-// Dano direto no treinador (quando ele está sem criatura ativa protegendo)
-export function calcTrainerDamage(attacker, move, opts = {}) {
-  const rng = opts.rng || Math.random;
-  const atk = getStats(attacker).atk * stageMult(opts.atkStage || 0);
-  const roll = opts.noRandom ? 1 : 0.9 + rng() * 0.1;
-  return Math.max(1, Math.round((move.power * 2 + atk) * CONFIG.TRAINER_DIRECT_DAMAGE_MULT * roll));
-}
-
 export class Battle {
   /**
    * @param {object} o
    * @param {'wild'|'trainer'} o.kind
    * @param {object[]} o.playerTeam Monstrins do jogador (objetos reais da equipe)
    * @param {object[]} o.enemyTeam Monstrins adversários
+   *
+   * Regras: só os Monstrins têm PV. Treinadores e Monstrins selvagens não
+   * recebem ataques diretos. A batalha termina quando um dos lados fica sem
+   * Monstrins aptos. O PV dos Monstrins do jogador é o PV real deles (não é
+   * restaurado ao fim da batalha).
    */
   constructor(o) {
     this.kind = o.kind;
     this.rng = o.rng || Math.random;
-    this.useTrainerHp = o.kind === 'trainer';
-    const thp = o.trainerHp ?? CONFIG.TRAINER_MAX_HP;
     this.sides = [
-      { id: 0, name: o.playerName || 'Você', team: o.playerTeam, active: null, trainerHp: thp, trainerMaxHp: thp },
-      { id: 1, name: o.enemyName || 'Selvagem', team: o.enemyTeam, active: null, trainerHp: o.enemyTrainerHp ?? thp, trainerMaxHp: o.enemyTrainerHp ?? thp, isTrainer: o.kind === 'trainer' },
+      { id: 0, name: o.playerName || 'Você', team: o.playerTeam, active: null },
+      { id: 1, name: o.enemyName || 'Selvagem', team: o.enemyTeam, active: null, isTrainer: o.kind === 'trainer' },
     ];
+    this.endReason = null;
     this.stages = new Map();
     this.participants = new Set();
     this.over = false;
@@ -68,8 +63,10 @@ export class Battle {
     this.fleeAttempts = 0;
     this.rewardMult = o.kind === 'trainer' ? 1.5 : 1;
 
-    const lead = o.playerLeadIndex ?? this.sides[0].team.findIndex((m) => !isFainted(m));
-    if (lead >= 0 && !isFainted(this.sides[0].team[lead])) this.setActive(0, lead);
+    // O primeiro a entrar precisa estar apto; desmaiados nunca começam a batalha.
+    let lead = o.playerLeadIndex ?? -1;
+    if (lead < 0 || !this.sides[0].team[lead] || isFainted(this.sides[0].team[lead])) lead = this.sides[0].team.findIndex((m) => !isFainted(m));
+    if (lead >= 0) this.setActive(0, lead);
     const elead = this.sides[1].team.findIndex((m) => !isFainted(m));
     if (elead >= 0) this.setActive(1, elead);
   }
@@ -97,13 +94,20 @@ export class Battle {
     return this.healthyIndexes(sideIdx).length > 0;
   }
 
-  // O jogador precisa escolher uma criatura? (obrigatório em encontros selvagens)
+  // O jogador precisa escolher outro Monstrin (o ativo desmaiou e ainda há aptos)
   mustSummon() {
-    return !this.over && this.activeMon(0) === null && this.hasHealthy(0) && this.kind === 'wild';
+    return !this.over && this.activeMon(0) === null && this.hasHealthy(0);
   }
 
-  isExposed(sideIdx) {
-    return this.useTrainerHp && this.activeMon(sideIdx) === null;
+  // O adversário convoca o próximo Monstrin apto assim que o anterior desmaia.
+  autoReplaceEnemy(events) {
+    if (this.over || this.activeMon(1) !== null) return;
+    const healthy = this.healthyIndexes(1);
+    if (!healthy.length) return;
+    const side = this.sides[1];
+    this.setActive(1, healthy[0]);
+    const mon = this.activeMon(1);
+    events.push({ type: 'switch', side: 1, fromUid: null, toUid: mon.uid, index: healthy[0], hp: mon.hp, maxHp: maxHp(mon), level: mon.level, text: `${side.name} convocou ${displayName(mon)}!` });
   }
 
   stagesOf(mon) {
@@ -180,6 +184,7 @@ export class Battle {
     }
     if (!this.over) this.endOfTurn(events);
     this.checkEnd(events);
+    this.autoReplaceEnemy(events);
     return events;
   }
 
@@ -237,6 +242,7 @@ export class Battle {
       }
       case 'surrender': {
         this.over = true;
+        this.endReason = 'surrender';
         this.result = sideIdx === 0 ? 'lose' : 'win';
         events.push({ type: 'message', text: `${side.name} se rendeu.` });
         events.push({ type: 'end', result: this.result, reason: 'surrender' });
@@ -244,7 +250,6 @@ export class Battle {
       }
       case 'wait':
       default:
-        if (sideIdx === 1 && side.isTrainer && !this.activeMon(1)) events.push({ type: 'message', text: `${side.name} está sem Monstrins para se proteger!` });
     }
   }
 
@@ -276,16 +281,9 @@ export class Battle {
       return;
     }
 
-    // Ataque de dano
+    // Ataque de dano (treinadores e jogadores nunca são alvo)
     if (!defender) {
-      if (this.useTrainerHp && this.sides[foeIdx].trainerHp > 0) {
-        const dmg = calcTrainerDamage(attacker, move, { rng: this.rng, atkStage: aSt.atk });
-        const foeSide = this.sides[foeIdx];
-        foeSide.trainerHp = Math.max(0, foeSide.trainerHp - dmg);
-        events.push({ type: 'damage', side: foeIdx, target: 'trainer', amount: dmg, eff: 1, crit: false, hp: foeSide.trainerHp, maxHp: foeSide.trainerMaxHp, text: `${foeSide.name} recebeu um ataque direto!` });
-      } else {
-        events.push({ type: 'miss', side: sideIdx, text: 'Mas não havia alvo!' });
-      }
+      events.push({ type: 'miss', side: sideIdx, text: 'Mas não havia alvo!' });
       return;
     }
 
@@ -361,15 +359,10 @@ export class Battle {
 
   checkEnd(events) {
     if (this.over) return;
+    // Vence quem derrotar todos os Monstrins do adversário.
     let result = null;
-    if (this.useTrainerHp) {
-      if (this.sides[0].trainerHp <= 0) result = 'lose';
-      else if (this.sides[1].trainerHp <= 0) result = 'win';
-      else if (!this.hasHealthy(0) && !this.hasHealthy(1)) result = this.sides[0].trainerHp >= this.sides[1].trainerHp ? 'win' : 'lose';
-    } else {
-      if (!this.hasHealthy(1)) result = 'win';
-      else if (!this.hasHealthy(0)) result = 'lose';
-    }
+    if (!this.hasHealthy(1)) result = 'win';
+    else if (!this.hasHealthy(0)) result = 'lose';
     if (result) {
       this.over = true;
       this.result = result;

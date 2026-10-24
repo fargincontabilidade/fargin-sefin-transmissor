@@ -147,50 +147,29 @@ test('batalha selvagem: captura encerra a batalha', () => {
   assert.equal(b.caughtMon, wild);
 });
 
-test('PV do treinador: sem criatura ativa, recebe dano direto e pode perder', () => {
-  const rng = createRng(5);
-  const mine = createMonstrin('cogumi', 2, { rng });
-  const foe = createMonstrin('brasito', 20, { rng });
-  const b = new Battle({ kind: 'trainer', playerTeam: [mine], enemyTeam: [foe], enemyName: 'Caio', rng });
-  assert.equal(b.sides[0].trainerHp, CONFIG.TRAINER_MAX_HP);
-  // criatura do jogador vai desmaiar
-  let guard = 0;
-  while (!b.over && b.activeMon(0) && guard++ < 20) b.playTurn({ type: 'move', moveId: 'investida' });
-  assert.equal(b.activeMon(0), null);
-  assert.ok(b.isExposed(0));
-  const hpBefore = b.sides[0].trainerHp;
-  const evs = b.playTurn({ type: 'wait' });
-  assert.ok(evs.some((e) => e.type === 'damage' && e.target === 'trainer' && e.side === 0));
-  assert.ok(b.sides[0].trainerHp < hpBefore);
-  guard = 0;
-  while (!b.over && guard++ < 30) b.playTurn({ type: 'wait' });
-  assert.equal(b.result, 'lose');
-  assert.equal(b.sides[0].trainerHp, 0);
-});
-
-test('PV do treinador: criatura na equipe (não ativa) não protege; convocar protege', () => {
-  const rng = createRng(6);
-  const a = createMonstrin('cogumi', 2, { rng });
-  const reserve = createMonstrin('pedrolho', 30, { rng });
-  const foe = createMonstrin('brasito', 20, { rng });
-  const b = new Battle({ kind: 'trainer', playerTeam: [a, reserve], enemyTeam: [foe], rng, playerLeadIndex: 0 });
-  let guard = 0;
-  while (b.activeMon(0) && guard++ < 20) b.playTurn({ type: 'move', moveId: 'investida' });
-  assert.ok(b.isExposed(0), 'reserva na equipe não deve contar como ativa');
-  const evs = b.playTurn({ type: 'switch', index: 1 });
-  assert.ok(evs.some((e) => e.type === 'switch'));
-  assert.ok(!evs.some((e) => e.type === 'damage' && e.target === 'trainer' && e.side === 0));
-});
-
-test('PV do treinador: vencer derrubando o adversário exposto', () => {
+test('batalha contra treinador: sem PV de treinador; vence quem derrotar todos os Monstrins', () => {
   const rng = createRng(8);
   const mine = createMonstrin('vulcarion', 40, { rng });
-  const foe = createMonstrin('brotim', 3, { rng });
-  const b = new Battle({ kind: 'trainer', playerTeam: [mine], enemyTeam: [foe], rng });
+  const foes = [createMonstrin('brotim', 3, { rng }), createMonstrin('cogumi', 3, { rng })];
+  const b = new Battle({ kind: 'trainer', playerTeam: [mine], enemyTeam: foes, rng });
   let guard = 0;
-  while (!b.over && guard++ < 30) b.playTurn({ type: 'move', moveId: mine.equippedMoves[0] });
+  const all = [];
+  while (!b.over && guard++ < 30) {
+    const enemyNeedsSummon = !b.activeMon(1);
+    all.push(...b.playTurn({ type: 'move', moveId: mine.equippedMoves[0] }));
+    void enemyNeedsSummon;
+  }
   assert.equal(b.result, 'win');
-  assert.equal(b.sides[1].trainerHp, 0);
+  assert.ok(foes.every((f) => f.hp <= 0));
+  assert.ok(!all.some((e) => e.target === 'trainer'), 'nenhum ataque direto em treinador');
+});
+
+test('batalha contra treinador: render-se encerra sem teletransporte', () => {
+  const rng = createRng(9);
+  const b = new Battle({ kind: 'trainer', playerTeam: [createMonstrin('cogumi', 3, { rng })], enemyTeam: [createMonstrin('brasito', 20, { rng })], rng });
+  b.playTurn({ type: 'surrender' });
+  assert.equal(b.result, 'lose');
+  assert.equal(b.endReason, 'surrender');
 });
 
 test('jogo: equipe, coleção, inventário, missões e salvamento', () => {
@@ -223,6 +202,8 @@ test('jogo: equipe, coleção, inventário, missões e salvamento', () => {
   // derrota: volta ao centro e cura
   for (const x of loaded.party()) x.hp = 0;
   loaded.recoverFromDefeat();
-  assert.ok(loaded.party().every((x) => x.hp === maxHp(x)));
+  // Versão atual: o jogador vai ao Centro Monstrin e a equipe só é curada ao falar com o atendimento
   assert.equal(loaded.s.player.mapId, 'centro_monstrin');
+  loaded.healAll();
+  assert.ok(loaded.party().every((x) => x.hp === maxHp(x)));
 });

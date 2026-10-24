@@ -228,11 +228,13 @@ export function applyRune(mon, itemId) {
 }
 
 // Uso de itens de recuperação fora/dentro de batalha.
+// Itens comuns curam só Monstrins conscientes. Monstrins desmaiados se
+// recuperam apenas no Centro Monstrin (itens de reviver ficam para o futuro).
 export function canUseHealItem(mon, itemId) {
   const item = getItem(itemId);
-  if (item.revive) return isFainted(mon) ? { ok: true } : { ok: false, reason: 'Só funciona em Monstrins desmaiados.' };
+  if (item.revive) return { ok: false, reason: 'Ainda não funciona. Monstrins desmaiados se recuperam no Centro Monstrin.' };
   if (item.heal) {
-    if (isFainted(mon)) return { ok: false, reason: 'Está desmaiado. Use uma Erva do Despertar.' };
+    if (isFainted(mon)) return { ok: false, reason: 'Está desmaiado. Leve ao Centro Monstrin para recuperar.' };
     if (mon.hp >= maxHp(mon)) return { ok: false, reason: 'Os PV já estão cheios.' };
     return { ok: true };
   }

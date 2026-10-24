@@ -1,5 +1,5 @@
-// Interface de batalha (HTML). Mostra criaturas ativas, PV, PV dos treinadores,
-// ataques, itens, troca, captura e fuga.
+// Interface de batalha (HTML). Mostra as criaturas ativas e seus PV,
+// ataques, itens, troca, captura e fuga. Treinadores não têm PV.
 import { h } from './ui.js';
 import { controls } from './controls.js';
 import { sfx } from '../audio/sfx.js';
@@ -31,7 +31,6 @@ export class BattleHud {
       const m = battle.activeMon(side);
       if (m) this.setMon(side, m, m.hp, maxHp(m));
       else this.setMon(side, null);
-      if (battle.useTrainerHp) this.setTrainerHp(side, battle.sides[side].trainerHp, battle.sides[side].trainerMaxHp);
     }
   }
 
@@ -46,27 +45,19 @@ export class BattleHud {
     const xpBar = side === 0 ? h('div', { class: 'bar xp', style: { marginTop: '5px' } }, h('i')) : null;
     el.append(h('div', { class: 'row' }, h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center', minWidth: 0 } }, nm, badge, status), lv), hpBar, hpn);
     if (xpBar) el.append(xpBar);
-    let trainer = null;
-    if (this.battle.useTrainerHp) {
-      const lbl = h('div', { class: 'lbl' }, h('span', {}, `👤 ${this.battle.sides[side].name}`), h('span', { class: 'v' }));
-      const bar = h('div', { class: 'bar trainer' }, h('i'));
-      trainer = h('div', { class: 'trainer-hp' }, lbl, bar);
-      el.append(trainer);
-    }
     if (side === 0) el.style.alignSelf = 'flex-start';
-    return { el, nm, badge, status, lv, hpBar, hpn, xpBar, trainer };
+    return { el, nm, badge, status, lv, hpBar, hpn, xpBar };
   }
 
   setMon(side, mon, hp, max) {
     const p = side === 0 ? this.playerPanel : this.enemyPanel;
     if (!mon) {
-      p.nm.textContent = side === 0 ? 'Sem Monstrin ativo' : 'Sem Monstrin ativo';
+      p.nm.textContent = side === 0 ? 'Escolha um Monstrin' : 'Trocando de Monstrin...';
       p.badge.style.display = 'none';
       p.lv.textContent = '';
       p.hpBar.firstChild.style.width = '0%';
-      p.hpn.textContent = this.battle.useTrainerHp ? 'O treinador está desprotegido!' : '';
+      p.hpn.textContent = '';
       p.status.style.display = 'none';
-      if (p.trainer) p.trainer.classList.add('exposed');
       return;
     }
     const sp = getSpecies(mon.speciesId);
@@ -79,7 +70,6 @@ export class BattleHud {
     p.status.style.display = mon.status === 'burn' ? '' : 'none';
     this.setHp(side, hp ?? mon.hp, max ?? maxHp(mon));
     if (p.xpBar) this.setXp(mon);
-    if (p.trainer) p.trainer.classList.remove('exposed');
     p.uid = mon.uid;
   }
 
@@ -105,14 +95,6 @@ export class BattleHud {
   setStatus(side, status) {
     const p = side === 0 ? this.playerPanel : this.enemyPanel;
     p.status.style.display = status === 'burn' ? '' : 'none';
-  }
-
-  setTrainerHp(side, hp, max) {
-    const p = side === 0 ? this.playerPanel : this.enemyPanel;
-    if (!p.trainer) return;
-    const r = Math.max(0, hp) / max;
-    p.trainer.querySelector('.bar > i').style.width = `${r * 100}%`;
-    p.trainer.querySelector('.v').textContent = `${Math.max(0, hp)} PV`;
   }
 
   log(text, ms) {
@@ -186,7 +168,6 @@ export class BattleHud {
           return el;
         };
         if (active) list.push(btn('⚔️', 'Atacar', 'red', moves));
-        else if (!b.hasHealthy(0)) list.push(btn('⏳', 'Aguardar', 'ghost', () => done({ type: 'wait' })));
         if (wild) {
           const seals = Object.values(ITEMS).filter((it) => it.category === 'captura' && g.count(it.id) > 0);
           const total = seals.reduce((s, it) => s + g.count(it.id), 0);
@@ -199,8 +180,7 @@ export class BattleHud {
         else list.push(btn('🏳️', 'Render-se', 'ghost', async () => { done({ type: 'surrender' }); }));
         this.setButtons({ list, wrapClass: 'battle-actions' });
         this.bindKeys(null);
-        if (!active && b.useTrainerHp) this.logEl.textContent = b.hasHealthy(0) ? 'Você está sem Monstrin ativo! Convoque um para se proteger.' : 'Você não tem Monstrins aptos! Use um item ou aguarde.';
-        else this.logEl.textContent = `O que ${displayName(active)} vai fazer?`;
+        this.logEl.textContent = active ? `O que ${displayName(active)} vai fazer?` : 'Escolha quem vai entrar na batalha!';
       };
       const back = () => { sfx.play('close'); main(); };
       const backBtn = () => h('div', { class: 'back-row' }, h('button', { class: 'btn ghost small', onclick: back }, '← Voltar'));
@@ -214,7 +194,6 @@ export class BattleHud {
             const e = effectiveness(mv.element, getSpecies(foe.speciesId).element);
             if (e > 1) effTxt = '▲ Super'; else if (e < 1) effTxt = '▼ Fraco';
           }
-          if (!foe && mv.category === 'dano' && b.useTrainerHp) effTxt = 'Direto!';
           const sub = mv.category === 'dano' ? `Poder ${mv.power} · Precisão ${mv.accuracy}` : mv.category === 'cura' ? 'Cura' : 'Suporte';
           return h('button', { class: 'move-btn', style: { background: `linear-gradient(180deg, ${el.color}, ${el.dark})` }, onclick: () => done({ type: 'move', moveId: id }) },
             `${el.icon} ${mv.name}`, h('small', {}, sub), effTxt ? h('span', { class: 'eff' }, effTxt) : null);

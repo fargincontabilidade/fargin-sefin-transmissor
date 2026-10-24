@@ -39,6 +39,10 @@ function texture(size, base, painter, seed) {
   return c;
 }
 
+// Texturas pintadas (Kit Visual 02) que substituem as geradas por código.
+// São carregadas na BootScene; se faltarem, fica a textura gerada.
+export const TERRAIN_IMAGES = {};
+
 function makePatterns(ctx) {
   const pats = {};
   pats.grass = ctx.createPattern(texture(256, PAL.grass, (g, n, r) => {
@@ -97,6 +101,8 @@ function makePatterns(ctx) {
       g.fillStyle = rgba('#ffffff', 0.5); g.fillRect(x + 2, y + 2, s - 4, 3);
     }
   }, 19), 'repeat');
+  if (TERRAIN_IMAGES.water) pats.water = ctx.createPattern(TERRAIN_IMAGES.water, 'repeat');
+  if (TERRAIN_IMAGES.cobble) pats.cobble = ctx.createPattern(TERRAIN_IMAGES.cobble, 'repeat');
   return pats;
 }
 

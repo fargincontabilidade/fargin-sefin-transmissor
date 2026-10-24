@@ -32,7 +32,7 @@ export const ITEMS = {
   },
   erva_despertar: {
     id: 'erva_despertar', name: 'Erva do Despertar', category: 'recuperacao', price: 300,
-    desc: 'Reanima um Monstrin desmaiado com metade dos PV.', revive: 0.5, usableIn: ['battle', 'field'],
+    desc: 'Erva rara que um dia poderá reanimar Monstrins. Por enquanto, desmaiados só se recuperam no Centro Monstrin.', revive: 0.5, usableIn: [],
   },
 
   // ---------- Runas de Técnica ----------

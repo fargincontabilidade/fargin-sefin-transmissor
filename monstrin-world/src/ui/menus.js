@@ -15,6 +15,7 @@ import {
 import { art, lookFor } from '../art/registry.js';
 import { sfx } from '../audio/sfx.js';
 import { controls } from './controls.js';
+import { openCollection, openDecks } from './cards.js';
 import { arena } from '../duel/arena.js';
 
 const elBadge = (elId) => { const e = ELEMENTS[elId]; return h('span', { class: 'badge', style: { background: e.color } }, `${e.icon} ${e.name}`); };
@@ -26,12 +27,14 @@ const fmtTime = (ms) => { const m = Math.floor(ms / 60000); return `${Math.floor
 function monCard(m, game, onclick, extra = {}) {
   const mx = maxHp(m);
   const isF = game.s.followerUid === m.uid && game.s.party.includes(m.uid);
-  return h('button', { class: `mon-card ${isFainted(m) ? 'fainted' : ''} ${isF ? 'follower' : ''} ${extra.selected ? 'selected' : ''}`, onclick },
-    h('img', { src: art.monUrl(m.speciesId), alt: '' }),
+  const fainted = isFainted(m);
+  return h('button', { class: `mon-card ${fainted ? 'fainted' : ''} ${isF ? 'follower' : ''} ${extra.selected ? 'selected' : ''}`, onclick },
+    h('span', { class: 'mon-pic' }, h('img', { src: art.monUrl(m.speciesId), alt: '' }), fainted ? h('span', { class: 'ko-tag' }, 'DESMAIADO') : null),
     h('div', { class: 'info' },
       h('div', { class: 'row' }, h('span', { class: 'nm' }, `${isF ? '⭐ ' : ''}${displayName(m)}`), h('span', { class: 'lv' }, `Nv.${m.level}`)),
-      h('div', { class: 'row' }, elBadge(getSpecies(m.speciesId).element), h('span', { class: 'hp-txt' }, isFainted(m) ? 'Desmaiado' : `${m.hp}/${mx} PV`)),
+      h('div', { class: 'row' }, elBadge(getSpecies(m.speciesId).element), h('span', { class: 'hp-txt' }, `${Math.max(0, m.hp)}/${mx} PV`)),
       hpBar(m.hp, mx), xpBar(m),
+      fainted ? h('div', { class: 'ko-note' }, 'Recupere no Centro Monstrin para voltar a batalhar.') : null,
     ));
 }
 
@@ -79,24 +82,26 @@ export const menus = {
         tile('▶️', 'Continuar', () => ui.close(entry)),
         tile('🐾', 'Equipe', () => this.openTeam()),
         tile('📖', 'Criaturário', () => this.openDex()),
+        tile('🃏', 'Coleção', () => openCollection()),
+        tile('🗂️', 'Decks', () => openDecks()),
+        tile('⚔️', 'Arena de Duelos', () => { ui.close(entry); menus.showHud(false); arena.open({ onExit: () => { menus.showHud(true); menus.refreshHud(); } }); }),
         tile('🎒', 'Inventário', () => this.openBag()),
         tile('🗺️', 'Mapa', () => this.openMap()),
         tile('📜', 'Missões', () => this.openQuests()),
-        tile('⚔️', 'Arena de Duelos', () => { ui.close(entry); menus.showHud(false); arena.open({ onExit: () => { menus.showHud(true); menus.refreshHud(); } }); }),
         tile('💾', 'Salvar', () => { const r = app.save(); ui.toast(r.ok ? 'Progresso salvo neste aparelho!' : 'Não foi possível salvar.'); sfx.play('select'); }),
         tile('⚙️', 'Configurações', () => this.openSettings()),
       ));
     });
   },
 
-  // ---------------- Equipe e Coleção ----------------
+  // ---------------- Equipe e Reserva (Monstrins guardados) ----------------
   openTeam(opts = {}) {
     const g = app.game;
     let tab = opts.box ? 'box' : 'party';
-    ui.openScreen(opts.box ? 'Terminal de Coleção' : 'Equipe', (body, entry) => {
+    ui.openScreen(opts.box ? 'Terminal da Reserva' : 'Equipe', (body, entry) => {
       const tabs = h('div', { class: 'tabs' },
         h('button', { class: `tab ${tab === 'party' ? 'on' : ''}`, onclick: () => { tab = 'party'; entry.render(); } }, `Equipe (${g.s.party.length}/${CONFIG.PARTY_SIZE})`),
-        h('button', { class: `tab ${tab === 'box' ? 'on' : ''}`, onclick: () => { tab = 'box'; entry.render(); } }, `Coleção (${g.s.box.length})`));
+        h('button', { class: `tab ${tab === 'box' ? 'on' : ''}`, onclick: () => { tab = 'box'; entry.render(); } }, `Reserva (${g.s.box.length})`));
       body.append(tabs);
       const list = tab === 'party' ? g.party() : g.box();
       if (!list.length) body.append(h('p', { class: 'muted' }, tab === 'party' ? 'Você ainda não tem Monstrins.' : 'Nenhum Monstrin guardado. Quando a equipe estiver cheia, novas capturas vêm para cá.'));
@@ -128,7 +133,7 @@ export const menus = {
         h('span', {}, 'Espécie: ', h('b', {}, `#${String(sp.num).padStart(3, '0')} ${sp.name}`)),
         h('span', {}, 'Nível: ', h('b', {}, m.level)),
         h('span', {}, 'XP: ', h('b', {}, m.level >= CONFIG.MAX_LEVEL ? 'Máximo' : `${m.xp - xpForLevel(m.level)}/${xpForLevel(m.level + 1) - xpForLevel(m.level)}`))));
-      info.append(h('div', { style: { margin: '8px 0' } }, hpBar(m.hp, mx), h('div', { class: 'hp-txt muted', style: { fontSize: '14px', fontWeight: 800, marginTop: '3px' } }, `${m.hp}/${mx} PV ${m.status === 'burn' ? '· Queimado' : ''}`), h('div', { style: { marginTop: '6px' } }, xpBar(m))));
+      info.append(h('div', { style: { margin: '8px 0' } }, hpBar(m.hp, mx), h('div', { class: 'hp-txt muted', style: { fontSize: '14px', fontWeight: 800, marginTop: '3px' } }, `${Math.max(0, m.hp)}/${mx} PV ${isFainted(m) ? '· DESMAIADO (recupere no Centro Monstrin)' : m.status === 'burn' ? '· Queimado' : ''}`), h('div', { style: { marginTop: '6px' } }, xpBar(m))));
       info.append(h('div', { class: 'kv' },
         h('span', {}, 'Temperamento: ', h('b', {}, temp.name), temp.up ? ` (+${STAT_NAMES[temp.up]} / −${STAT_NAMES[temp.down]})` : ''),
         h('span', {}, 'Traço marcante: ', h('b', {}, sig.label)),
@@ -147,7 +152,7 @@ export const menus = {
         if (g.s.followerUid !== uid) actions.append(h('button', { class: 'btn gold small', onclick: () => { g.setFollower(uid); app.world?.refreshFollower(); ui.toast(`${displayName(m)} agora acompanha você!`, art.monUrl(m.speciesId)); refresh(); } }, '⭐ Acompanhante'));
         actions.append(h('button', { class: 'btn ghost small', onclick: () => { g.moveInParty(uid, -1); refresh(); } }, '↑ Subir'));
         actions.append(h('button', { class: 'btn ghost small', onclick: () => { g.moveInParty(uid, 1); refresh(); } }, '↓ Descer'));
-        actions.append(h('button', { class: 'btn ghost small', onclick: () => { const r = g.sendToBox(uid); if (!r.ok) ui.toast(r.reason); else { app.world?.refreshFollower(); ui.toast(`${displayName(m)} foi para a Coleção.`); } refresh(); } }, '📦 Guardar na Coleção'));
+        actions.append(h('button', { class: 'btn ghost small', onclick: () => { const r = g.sendToBox(uid); if (!r.ok) ui.toast(r.reason); else { app.world?.refreshFollower(); ui.toast(`${displayName(m)} foi para a Reserva.`); } refresh(); } }, '📦 Guardar na Reserva'));
       } else {
         actions.append(h('button', { class: 'btn green small', onclick: () => { const r = g.takeFromBox(uid); if (!r.ok) ui.toast(r.reason); else ui.toast(`${displayName(m)} entrou na equipe!`); refresh(); } }, '➕ Levar para a Equipe'));
       }

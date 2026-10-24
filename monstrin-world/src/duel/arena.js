@@ -9,6 +9,27 @@ import { RULES } from './rules.js';
 import { DUEL_CARDS, PRESET_DECKS } from './cards.js';
 import { Duel, CONDITION_NAMES, DUEL_ITEMS } from './engine.js';
 import { aiSetup, aiPlan, aiReplacement } from './ai.js';
+import { validateDeck } from './cards.js';
+import { app } from '../app.js';
+import { activeDeck } from '../core/decks.js';
+
+// Converte o deck ativo do editor de decks (Coleção) para o duelo, se ele
+// cumprir o Regulamento v1.0: 15 cartas, somente Monstrins, até 2 cópias.
+export function playerDuelDeck(game) {
+  if (!game) return { ok: false, reason: 'Disponível dentro de uma aventura.' };
+  const deck = activeDeck(game);
+  if (!deck) return { ok: false, reason: 'Nenhum deck ativo (menu Decks).' };
+  const ids = [];
+  for (const [cid, n] of Object.entries(deck.cards)) {
+    if (!cid.startsWith('m_')) return { ok: false, name: deck.name, reason: 'Pelo regulamento, o deck de duelo tem somente cartas de Monstrins.' };
+    const sp = cid.slice(2);
+    if (!DUEL_CARDS[sp]) return { ok: false, name: deck.name, reason: `${sp} ainda não tem ficha de duelo.` };
+    for (let i = 0; i < n; i++) ids.push(sp);
+  }
+  const v = validateDeck(ids, RULES);
+  if (!v.ok) return { ok: false, name: deck.name, reason: v.errors[0] };
+  return { ok: true, name: deck.name, cards: ids };
+}
 
 const COND_ICON = { poison: '☠️', burn: '🔥', paralysis: '⚡', sleep: '💤', freeze: '❄️' };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -87,18 +108,23 @@ export class Arena {
         h('h2', { style: { margin: 0, flex: 1, fontSize: '26px' } }, '⚔️ Arena de Duelos'),
         h('button', { class: 'btn ghost small', onclick: () => this.close() }, 'Sair')));
       box.append(h('p', { style: { margin: 0, color: '#cfd6ff', fontWeight: 700 } }, `Regulamento v${RULES.VERSION}: escolhas secretas e simultâneas, vence quem fizer 5 KOs. Cartas e valores provisórios.`));
-      box.append(h('div', { class: 'd-deckpick' }, Object.values(PRESET_DECKS).map((d) => {
+      const own = playerDuelDeck(app.game);
+      const decks = [...Object.values(PRESET_DECKS)];
+      if (own.ok) decks.push({ id: 'player', name: `Seu deck: ${own.name}`, desc: 'Seu deck ativo da Coleção.', cards: own.cards });
+      this.presets = Object.fromEntries(decks.map((d) => [d.id, d]));
+      box.append(h('div', { class: 'd-deckpick' }, decks.map((d) => {
         const uniq = [...new Set(d.cards)];
         return h('button', { class: `d-deck ${pick === d.id ? 'on' : ''}`, onclick: () => { pick = d.id; sfx.play('cursor'); draw(); } },
           h('b', { style: { fontSize: '18px' } }, d.name),
           h('div', { class: 'imgs' }, uniq.map((id) => h('img', { src: art.monUrl(DUEL_CARDS[id].art), alt: DUEL_CARDS[id].name }))),
           h('small', { style: { color: '#cfd6ff', fontWeight: 700 } }, d.desc));
       })));
+      if (!own.ok) box.append(h('p', { style: { margin: 0, color: '#aab2d6', fontWeight: 700, fontSize: '14px' } }, `Seu deck${own.name ? ` "${own.name}"` : ''}: ${own.reason}`));
       const opt = (label, key, desc) => h('label', { style: { display: 'flex', gap: '10px', alignItems: 'center', fontWeight: 800 } },
         h('input', { type: 'checkbox', checked: this.settings[key] ? true : null, onchange: (e) => { this.settings[key] = e.target.checked; this.saveSettings(); } }), h('span', {}, label, h('small', { style: { display: 'block', color: '#aab2d6' } }, desc)));
       box.append(opt(`⏱ Tempo de escolha (${RULES.TURN_SECONDS}s)`, 'timer', 'Ao esgotar, você faz Defesa Básica. 3 esgotamentos seguidos = derrota.'));
       box.append(opt(`🧪 Itens de PvE (${RULES.ITEM_USES_PVE} usos)`, 'items', 'Tônico de Duelo: cura 30 PV, consome a ação principal.'));
-      box.append(h('button', { class: 'btn gold', style: { minHeight: '56px', fontSize: '19px' }, onclick: () => this.startMatch(pick) }, `Duelar com ${PRESET_DECKS[pick].name}`));
+      box.append(h('button', { class: 'btn gold', style: { minHeight: '56px', fontSize: '19px' }, onclick: () => this.startMatch(pick) }, `Duelar com ${this.presets[pick].name}`));
       this.root.append(box);
     };
     draw();
@@ -109,8 +135,9 @@ export class Arena {
     sfx.play('encounter');
     const other = deckId === 'chamas' ? 'mare' : 'chamas';
     this.deckId = deckId;
+    const mine = (this.presets && this.presets[deckId]) || PRESET_DECKS[deckId];
     this.duel = new Duel({
-      decks: [PRESET_DECKS[deckId].cards, PRESET_DECKS[other].cards],
+      decks: [mine.cards, PRESET_DECKS[other].cards],
       names: ['Você', 'Rival Caio'],
       config: { itemsEnabled: this.settings.items },
     });

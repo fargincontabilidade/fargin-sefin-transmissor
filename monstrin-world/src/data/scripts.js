@@ -15,11 +15,11 @@ export const TRAINERS = {
     intro: 'Ei, você aí! Treinadores que se cruzam no bosque precisam batalhar! Vamos ver se você é bom mesmo!',
     lose: 'Uau... Você e seus Monstrins formam uma ótima equipe!',
     win: 'Ha! Treine mais um pouco e volte para a revanche!',
-    after: 'Sabia que quando um treinador fica sem Monstrins ativos, ele pode levar ataques diretos? Por isso é bom convocar outro logo!',
+    after: 'Sabia que a batalha só acaba quando todos os Monstrins de um lado desmaiam? Se um cair, convoque outro da equipe!',
   },
 };
 
-export const SHOP_STOCK = ['selo_vinculo', 'selo_aurora', 'tonico', 'super_tonico', 'erva_despertar', 'runa_protecao'];
+export const SHOP_STOCK = ['selo_vinculo', 'selo_aurora', 'tonico', 'super_tonico', 'runa_protecao'];
 
 export const SCRIPTS = {
   async iris(ctx) {
@@ -56,17 +56,23 @@ export const SCRIPTS = {
     else await ctx.say('As cápsulas de pesquisa estão funcionando normalmente.');
   },
 
+  // Atendimento do Centro Monstrin: a ÚNICA forma de curar e reviver a equipe.
   async lia(ctx) {
-    const r = await ctx.ask('Olá! Bem-vindo ao Centro Monstrin. Quer que eu cuide dos seus Monstrins?', ['Sim, por favor', 'Não, obrigado']);
+    const party = ctx.game.party();
+    const fainted = party.filter((m) => m.hp <= 0).length;
+    if (fainted) await ctx.say(`Olá! Vejo que ${fainted === 1 ? '1 Monstrin seu está desmaiado' : `${fainted} Monstrins seus estão desmaiados`}. Posso ajudar!`);
+    const r = await ctx.ask('Bem-vindo ao Centro Monstrin! O atendimento é gratuito. O que deseja?', ['Recuperar meus Monstrins', 'Não, obrigado']);
     if (r !== 0) { await ctx.say('Volte sempre que precisar!'); return; }
+    if (!party.length) { await ctx.say('Você ainda não tem Monstrins. Volte quando tiver um parceiro!'); return; }
+    await ctx.say('Pode deixar comigo! Vou colocá-los na máquina de recuperação.');
     await ctx.healParty();
-    ctx.game.s.lastHeal = { mapId: 'centro_monstrin', x: 6.5, y: 7.5 };
-    await ctx.say('Prontinho! Seus Monstrins estão cheios de energia. Volte sempre!');
+    ctx.game.visitCenter('centro_monstrin');
+    await ctx.say('Prontinho! Todos os seus Monstrins estão com PV cheio e prontos para a aventura. Volte sempre!');
   },
   async heal(ctx) { return SCRIPTS.lia(ctx); },
 
   async pc_box(ctx) {
-    await ctx.say('Você ligou o Terminal de Coleção.');
+    await ctx.say('Você ligou o Terminal da Reserva.');
     ctx.openBox();
   },
   async pc_casa(ctx) { await ctx.say('É o seu computador. Tem um jogo de corrida de Monstrins aberto.'); },
@@ -74,7 +80,7 @@ export const SCRIPTS = {
 
   async bed(ctx) {
     const r = await ctx.ask('Quer descansar um pouco?', ['Descansar', 'Agora não']);
-    if (r === 0) { await ctx.healParty(); await ctx.say('Você e seus Monstrins descansaram e recuperaram as energias!'); }
+    if (r === 0) await ctx.say('Você tirou um cochilo gostoso! Mas lembre-se: para recuperar os PV dos seus Monstrins, leve-os ao Centro Monstrin.');
   },
 
   async lojista(ctx) {
@@ -95,7 +101,7 @@ export const SCRIPTS = {
 
   async tobias(ctx) {
     await ctx.say('Nos meus tempos de treinador, eu sempre dizia: Monstrin cansado é Monstrin mais fácil de capturar!');
-    await ctx.say('E se seus Monstrins desmaiarem, não se preocupe: você acorda no Centro Monstrin com todos curados.');
+    await ctx.say('E se todos os seus Monstrins desmaiarem, você volta ao Centro Monstrin. É só falar com a Enfermeira Lia para recuperá-los.');
   },
 
   async flora(ctx) {

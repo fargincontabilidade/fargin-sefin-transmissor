@@ -1,8 +1,9 @@
 /* global Phaser */
 // Cenas auxiliares: carregamento (gera a arte) e fundo animado da tela inicial.
 import { CONFIG } from '../config.js';
-import { generateTextures } from '../art/registry.js';
-import { paintGround } from '../art/terrain.js';
+import { generateTextures, CUSTOM_ART } from '../art/registry.js';
+import { worldArtFiles, artFor } from '../art/worldArt.js';
+import { paintGround, TERRAIN_IMAGES } from '../art/terrain.js';
 import { getMap } from '../data/maps/index.js';
 import { OBJECTS } from '../art/objects.js';
 import { MonSprite } from '../world/entities.js';
@@ -11,7 +12,17 @@ const T = CONFIG.TILE;
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
+  preload() {
+    // Ilustrações do Duelo Elemental (se alguma falhar, a espécie usa o desenho gerado)
+    for (const [id, url] of Object.entries(CUSTOM_ART)) this.load.image(`src_${id}`, url);
+    // Ilustrações do cenário (Kit Visual); se alguma faltar, o objeto usa o desenho por código
+    for (const f of worldArtFiles()) this.load.image(f.key, f.url);
+    this.load.image('ter_agua', 'img/mundo/textura_agua.webp');
+    this.load.image('ter_praca', 'img/mundo/textura_praca_pedra.webp');
+  }
   create() {
+    if (this.textures.exists('ter_agua')) TERRAIN_IMAGES.water = this.textures.get('ter_agua').getSourceImage();
+    if (this.textures.exists('ter_praca')) TERRAIN_IMAGES.cobble = this.textures.get('ter_praca').getSourceImage();
     generateTextures(this);
     this.game.events.emit('mw-ready');
   }
@@ -29,9 +40,12 @@ export class TitleScene extends Phaser.Scene {
       const od = OBJECTS[o.type];
       if (!od) continue;
       const [fw, fh] = od.foot;
-      const tree = ['oak', 'oak2', 'pine', 'blossom'].includes(o.type);
+      const art = artFor(this, o.type, o.x, o.y);
+      const tree = art ? art.tree : ['oak', 'oak2', 'pine', 'blossom'].includes(o.type);
       const baseY = { oak: 200, oak2: 200, blossom: 200, pine: 212 }[o.type] ?? od.h;
-      const img = this.add.image((o.x + fw / 2) * T, (o.y + fh) * T - (tree ? 10 : 0), `obj_${o.type}`).setOrigin(0.5, baseY / od.h).setDepth(od.ground ? -5e4 : (o.y + fh) * T);
+      const img = art
+        ? this.add.image((o.x + fw / 2) * T, (o.y + fh) * T - (tree ? 12 : 2), art.key).setOrigin(0.5, art.originY).setScale(art.sx, art.sy).setDepth(od.ground ? -5e4 : (o.y + fh) * T)
+        : this.add.image((o.x + fw / 2) * T, (o.y + fh) * T - (tree ? 10 : 0), `obj_${o.type}`).setOrigin(0.5, baseY / od.h).setDepth(od.ground ? -5e4 : (o.y + fh) * T);
       if (tree) this.tweens.add({ targets: img, angle: { from: -0.6, to: 0.8 }, duration: 2400 + Math.random() * 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }
     this.mons = [];

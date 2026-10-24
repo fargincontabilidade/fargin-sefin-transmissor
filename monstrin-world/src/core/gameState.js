@@ -3,8 +3,16 @@ import { CONFIG } from '../config.js';
 import { QUESTS } from '../data/quests.js';
 import { getItem } from '../data/items.js';
 import { isFainted, healFull, maxHp } from './monstrin.js';
+import { ensureStarterCards, grantMonstrinCards } from './decks.js';
 
 export const SAVE_VERSION = 1;
+
+// Centros Monstrin conhecidos e o ponto onde o jogador aparece ao chegar.
+// O primeiro é o Centro da cidade inicial (usado se nenhum foi visitado).
+export const CENTERS = {
+  centro_monstrin: { mapId: 'centro_monstrin', x: 6.5, y: 7.5 },
+};
+export const HOME_CENTER = 'centro_monstrin';
 
 export function newGameState({ name, look }) {
   const now = new Date().toISOString();
@@ -23,7 +31,10 @@ export function newGameState({ name, look }) {
     flags: {},
     regions: ['vila_aurora'],
     stats: { battles: 0, captures: 0, wins: 0, playMs: 0, trainersDefeated: [] },
-    lastHeal: { mapId: 'centro_monstrin', x: 6.5, y: 7.5 },
+    lastHeal: { ...CENTERS[HOME_CENTER] },
+    cards: {},
+    decks: [],
+    activeDeckId: null,
   };
 }
 
@@ -36,13 +47,24 @@ export function migrate(data) {
   data.stats.trainersDefeated = data.stats.trainersDefeated || [];
   data.regions = data.regions || ['vila_aurora'];
   data.box = data.box || [];
+  // O PV e o estado (desmaiado) de cada Monstrin vêm do salvamento como estão:
+  // nada é curado ao carregar o jogo.
+  if (!data.lastHeal || !CENTERS[data.lastHeal.mapId]) data.lastHeal = { ...CENTERS[HOME_CENTER] };
+  // Cartas e decks (salvamentos anteriores à versão com cartas)
+  data.cards = data.cards || {};
+  data.decks = data.decks || [];
+  if (data.activeDeckId === undefined) data.activeDeckId = null;
   return data;
 }
 
 export class Game {
   constructor(state) {
     this.s = state;
+    this.s.cards = this.s.cards || {};
+    this.s.decks = this.s.decks || [];
+    if (this.s.activeDeckId === undefined) this.s.activeDeckId = null;
     this.listeners = new Set();
+    ensureStarterCards(this); // coleção inicial provisória (uma única vez)
   }
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -62,6 +84,7 @@ export class Game {
     else { this.s.box.push(mon.uid); where = 'box'; }
     if (!this.s.followerUid) this.s.followerUid = mon.uid;
     this.markDex(mon.speciesId, 'caught');
+    grantMonstrinCards(this, mon); // cada Monstrin obtido entra na Coleção de cartas
     this.emit('team');
     return where;
   }
@@ -119,9 +142,17 @@ export class Game {
     return { ok: true };
   }
 
+  // Cura completa (PV cheio e fim do estado desmaiado). Só é chamada pelo
+  // atendimento do Centro Monstrin.
   healAll() {
     for (const m of this.allMons()) healFull(m);
     this.emit('team');
+  }
+
+  // Marca o Centro Monstrin visitado (para onde o jogador volta se perder tudo).
+  visitCenter(mapId) {
+    if (!CENTERS[mapId]) return;
+    this.s.lastHeal = { ...CENTERS[mapId] };
   }
 
   // ---------- Inventário ----------
@@ -228,13 +259,14 @@ export class Game {
   }
 
   // ---------- Derrota ----------
-  // O jogador volta ao Centro Monstrin com a equipe curada. Nada é perdido
-  // (a penalidade de moedas é configurável em CONFIG.DEFEAT_COIN_PENALTY).
+  // O jogador volta ao último Centro Monstrin visitado (ou ao da cidade
+  // inicial). Os Monstrins CONTINUAM desmaiados: a cura acontece só quando o
+  // jogador fala com o atendimento. Nada é perdido (a penalidade de moedas é
+  // configurável em CONFIG.DEFEAT_COIN_PENALTY).
   recoverFromDefeat() {
     const lost = Math.floor(this.s.player.coins * CONFIG.DEFEAT_COIN_PENALTY);
     this.s.player.coins -= lost;
-    this.healAll();
-    const h = this.s.lastHeal;
+    const h = CENTERS[this.s.lastHeal?.mapId] ? this.s.lastHeal : CENTERS[HOME_CENTER];
     this.s.player.mapId = h.mapId;
     this.s.player.x = h.x;
     this.s.player.y = h.y;

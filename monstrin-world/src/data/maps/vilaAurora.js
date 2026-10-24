@@ -55,6 +55,8 @@ export function buildVilaAurora() {
   m.many('barrel', [[27, 18], [21, 18]]);
   m.obj('crate', 28, 18);
   m.obj('bench', 18, 15, {}, [2, 1]);
+  // Canteiros de flores (Kit Visual)
+  m.many('flowerbed', [[4, 8], [9, 8], [21, 8], [29, 8], [13, 6], [17, 6], [27, 16], [11, 21], [22, 21]]);
 
   // NPCs
   m.npc({ id: 'nina', name: 'Nina', look: 'nina', x: 13, y: 13, dir: 'down', wander: 2, talk: 'nina' });
