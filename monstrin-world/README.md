@@ -29,17 +29,20 @@ Esc/M para o menu. No celular: direcional virtual, botão **A** e botão **☰**
 - XP, níveis 1–50, ataques por nível, evolução automática com animação.
 - Até 4 ataques equipados (configurável); ataques aprendidos nunca se perdem.
 - Runas de Técnica para ensinar ataques.
-- Equipe (6), Coleção, Criaturário com silhuetas, Inventário, Mapa da região, Missões e Configurações.
+- Equipe (6), Deck de duelo, Criaturário com silhuetas, Inventário, Mapa da região, Missões e Configurações.
 - Salvamento automático local com cópia de segurança, exportar/importar progresso.
 - Derrota: o jogador volta ao Centro Monstrin com a equipe curada, sem perder progresso.
 
-## Arena de Duelos (Regulamento v1.0)
+## Duelos de cartas (Regulamento v1.0)
 
-Acesse pela tela inicial ou pelo menu do jogo (**⚔️ Arena de Duelos**). Duelo de cartas de
-Monstrins contra o computador: baralho de 15 cartas, mão de 5, 1 principal + até 2 secundários,
+Uma única aventura: ao criar o personagem você escolhe o parceiro, que define seu deck inicial de
+15 cartas. Pelo mapa, pessoas com **⚔** acima da cabeça aceitam duelos (Treinadora Duda na praça,
+Treinador Caio no bosque). O duelo segue o regulamento: mão de 5, 1 principal + até 2 secundários,
 escolhas secretas e resolução simultânea, Energia de Duelo, escudos, condições, retaliação,
-drenagem, reviver e vitória por 5 KOs. Detalhes, lacunas do regulamento e soluções adotadas:
-[`docs/DUELOS.md`](docs/DUELOS.md).
+drenagem, reviver e vitória por 5 KOs. As habilidades são escolhidas tocando na própria carta.
+Ao terminar, você volta ao mesmo ponto do mapa. O deck fica em **Menu → Deck**.
+Não há multijogador online (sem servidor): todos os adversários são NPCs.
+Detalhes e decisões: [`docs/DUELOS.md`](docs/DUELOS.md).
 
 ## Onde mudar cada coisa
 

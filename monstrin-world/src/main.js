@@ -8,6 +8,8 @@ import { showTitle } from './ui/title.js';
 import { BootScene, TitleScene } from './scenes/scenes.js';
 import { WorldScene } from './world/WorldScene.js';
 import { Game, newGameState, migrate } from './core/gameState.js';
+import { createMonstrin } from './core/monstrin.js';
+import { grantStarterDeck } from './core/duelDeck.js';
 import { QUESTS } from './data/quests.js';
 import { getItem } from './data/items.js';
 import { art } from './art/registry.js';
@@ -70,8 +72,8 @@ function startGame(g, isNew) {
   if (isNew) {
     app.save();
     setTimeout(async () => {
-      await ui.say(`Bom dia, ${g.s.player.name}! Hoje é o grande dia: a Professora Íris está esperando você no laboratório, ao norte da Vila Aurora.`, { name: 'Mamãe (bilhete na mesa)' });
-      await ui.say('Use WASD/setas (ou o direcional na tela) para andar e E/Espaço (ou o botão A) para conversar e interagir.');
+      await ui.say(`Bom dia, ${g.s.player.name}! Hoje é o grande dia! Você e seu novo parceiro já têm um deck de cartas. A Professora Íris está esperando vocês no laboratório, ao norte da Vila Aurora.`, { name: 'Mamãe (bilhete na mesa)' });
+      await ui.say('Use WASD/setas (ou o direcional na tela) para andar e E/Espaço (ou o botão A) para conversar. Pessoas com ⚔ acima da cabeça aceitam duelos de cartas. Seu deck fica no Menu → Deck.');
     }, 900);
   }
 }
@@ -81,7 +83,16 @@ game.events.once('mw-ready', () => {
   game.scene.start('title');
   showTitle({
     onContinue: (saved) => startGame(new Game(migrate(saved)), false),
-    onNewGame: ({ name, look }) => startGame(new Game(newGameState({ name, look })), true),
+    onNewGame: ({ name, look, starter }) => {
+      const g = new Game(newGameState({ name, look }));
+      // O Monstrin escolhido na criação vira o parceiro e define o deck inicial
+      const mon = createMonstrin(starter, 5, { how: 'inicial', mapId: 'casa_jogador', ot: name });
+      g.addMonstrin(mon);
+      g.s.followerUid = mon.uid;
+      grantStarterDeck(g, starter);
+      g.setFlag('starterChosen');
+      startGame(g, true);
+    },
   });
 });
 

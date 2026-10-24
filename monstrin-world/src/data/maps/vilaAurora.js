@@ -60,6 +60,7 @@ export function buildVilaAurora() {
 
   // NPCs
   m.npc({ id: 'nina', name: 'Nina', look: 'nina', x: 13, y: 13, dir: 'down', wander: 2, talk: 'nina' });
+  m.npc({ id: 'duda', name: 'Treinadora Duda', look: 'duda', x: 19, y: 10, dir: 'down', talk: 'duda', duelist: 'duda' });
   m.npc({ id: 'tobias', name: 'Seu Tobias', look: 'tobias', x: 11, y: 23, dir: 'right', talk: 'tobias' });
   m.npc({ id: 'flora', name: 'Dona Flora', look: 'flora', x: 9, y: 18, dir: 'down', talk: 'flora' });
   m.npc({ id: 'bento', name: 'Vigia Bento', look: 'vigia', x: 31, y: 12, dir: 'left', talk: 'bento', moveIf: { flag: 'starterChosen', x: 30, y: 10, dir: 'down' } });

@@ -181,6 +181,8 @@ test('jogo: equipe, coleção, inventário, missões e salvamento', () => {
   assert.equal(g.party().length, CONFIG.PARTY_SIZE);
   assert.equal(g.box().length, 1);
   g.setFlag('starterChosen');
+  assert.equal(g.questStatus('inicio'), 'active');
+  g.setFlag('metIris');
   assert.equal(g.questStatus('inicio'), 'done');
   assert.ok(g.count('selo_vinculo') >= 5);
   g.startQuest('primeira_captura');

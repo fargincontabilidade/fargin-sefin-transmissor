@@ -44,7 +44,7 @@ export function buildBosque() {
   m.many('rock', [[52, 21], [40, 22], [45, 17]]);
 
   // Treinador
-  m.npc({ id: 'caio', name: 'Treinador Caio', look: 'caio', x: 38, y: 16, dir: 'down', talk: 'caio', trainer: { id: 'caio', sight: 5 } });
+  m.npc({ id: 'caio', name: 'Treinador Caio', look: 'caio', x: 38, y: 16, dir: 'down', talk: 'caio', duelist: 'caio', trainer: { id: 'caio', sight: 5 } });
   m.reserve(39, 12, 1, 10);
 
   // Áreas de aparecimento de Monstrins selvagens

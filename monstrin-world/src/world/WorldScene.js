@@ -21,6 +21,10 @@ import { getItem } from '../data/items.js';
 import { QUESTS } from '../data/quests.js';
 import { art, lookFor } from '../art/registry.js';
 import { runBattle } from '../battle/BattleDirector.js';
+import { runDuel } from '../duel/DuelScreen.js';
+import { DUELISTS } from '../data/duelists.js';
+import { applyDuelResult, validatePlayerDeck } from '../core/duelDeck.js';
+import { DUEL_CARDS } from '../duel/cards.js';
 import { playEvolutions } from '../ui/evolution.js';
 
 const T = CONFIG.TILE;
@@ -476,6 +480,7 @@ export class WorldScene extends Phaser.Scene {
         return displayName(mon);
       },
       trainerBattle: (id) => this.startTrainerBattle(id, npc),
+      duel: (id) => this.startDuel(id, npc),
       openShop: (stock) => menus.openShop(stock),
       openBox: () => menus.openTeam({ box: true }),
     };
@@ -575,6 +580,57 @@ export class WorldScene extends Phaser.Scene {
     return res.result;
   }
 
+  // ---------------- Duelos de cartas contra NPCs ----------------
+  // O mundo fica parado durante o duelo; ao terminar, o jogador continua
+  // exatamente no mesmo lugar do mapa.
+  async startDuel(duelistId, npc) {
+    const game = app.game;
+    const d = DUELISTS[duelistId];
+    if (!d || this.inBattle) return null;
+    if (!game.s.duel) { await ui.say('Você ainda não tem um deck de cartas.'); return null; }
+    const v = validatePlayerDeck(game, game.s.duel.deck);
+    if (!v.ok) { await ui.say(`Seu deck não está pronto: ${v.errors[0]} Ajuste em Menu → Deck.`); return null; }
+    const pos = { mapId: this.def.id, x: this.player.x, y: this.player.y, dir: this.player.dir };
+    this.inBattle = true;
+    this.locked = true;
+    controls.reset?.();
+    menus.showHud(false);
+    let res;
+    try {
+      await ui.fade(true);
+      const pending = runDuel({ playerName: game.s.player.name, look: game.s.player.look, playerDeck: game.s.duel.deck, duelist: d, tonics: game.count('tonico') });
+      await ui.fade(false);
+      res = await pending;
+      // Tônicos usados no duelo saem do inventário
+      if (res.itemsUsed) game.removeItem('tonico', Math.min(res.itemsUsed, game.count('tonico')));
+      game.s.stats.battles += 1;
+      const out = applyDuelResult(game, d, res.winner);
+      if (res.winner === 0) game.s.stats.wins += 1;
+      await ui.fade(true);
+      // posição preservada (o duelo não move o personagem)
+      this.player.x = pos.x; this.player.y = pos.y; this.player.face(pos.dir);
+      this.storePlayerPosition();
+      menus.showHud(true);
+      menus.refreshHud();
+      await ui.fade(false);
+      if (out.rewards) {
+        const r = out.rewards;
+        sfx.play('coin');
+        const parts = [];
+        if (r.coins) parts.push(`${r.coins} moedas`);
+        for (const [id, n] of Object.entries(r.cards || {})) parts.push(`${n}x carta ${DUEL_CARDS[id].name}`);
+        for (const [id, n] of Object.entries(r.items || {})) parts.push(`${n}x ${getItem(id).name}`);
+        await ui.say(`Recompensa da primeira vitória contra ${d.name}: ${parts.join(', ')}.`);
+      }
+      app.save();
+      return { result: out.result, rewards: out.rewards };
+    } finally {
+      this.inBattle = false;
+      this.locked = false;
+      menus.showHud(true);
+    }
+  }
+
   async afterBattle(res, { wild, trainer }) {
     const game = app.game;
     game.s.stats.battles += 1;
@@ -619,7 +675,7 @@ export class WorldScene extends Phaser.Scene {
     const pt = this.player.tile();
     for (const n of this.npcs) {
       const tr = n.def.trainer;
-      if (!tr || n.busy || app.game.s.stats.trainersDefeated.includes(tr.id) || this.locked) continue;
+      if (!tr || n.busy || n.sightDone || app.game.s.stats.trainersDefeated.includes(tr.id) || this.locked) continue;
       const nt = n.tile();
       const [vx, vy] = DIR_VEC[n.dir];
       for (let k = 1; k <= tr.sight; k++) {
@@ -633,6 +689,7 @@ export class WorldScene extends Phaser.Scene {
   async trainerSpotted(npc, dist) {
     this.locked = true;
     npc.busy = true;
+    npc.sightDone = true; // desafia só uma vez por visita ao mapa
     sfx.play('alert');
     const alert = this.add.image(npc.x, npc.y - 104, 'emote_alert').setDepth(1e6).setScale(0.1);
     this.tweens.add({ targets: alert, scale: 1, duration: 200, ease: 'Back.out' });

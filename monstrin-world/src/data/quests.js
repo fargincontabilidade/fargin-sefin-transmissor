@@ -9,7 +9,7 @@ export const QUESTS = {
   inicio: {
     id: 'inicio', name: 'Uma nova jornada', giver: 'Professora Íris',
     desc: 'A Professora Íris está esperando você no laboratório, no norte da Vila Aurora.',
-    objectives: [{ type: 'flag', flag: 'starterChosen', text: 'Escolha seu primeiro Monstrin no laboratório' }],
+    objectives: [{ type: 'flag', flag: 'metIris', text: 'Apresente-se à Professora Íris no laboratório' }],
     rewards: { items: { selo_vinculo: 5, tonico: 3, mapa_aurora: 1 }, coins: 300 },
   },
   primeira_captura: {
@@ -17,6 +17,12 @@ export const QUESTS = {
     desc: 'Enfraqueça um Monstrin selvagem no Bosque Sussurrante e use um Selo de Vínculo.',
     objectives: [{ type: 'capture', count: 1, text: 'Capture 1 Monstrin selvagem' }],
     rewards: { items: { selo_vinculo: 3, runa_protecao: 1 }, coins: 200 },
+  },
+  treino_duda: {
+    id: 'treino_duda', name: 'Primeiro duelo', giver: 'Professora Íris',
+    desc: 'A Treinadora Duda espera na praça da Vila Aurora para um duelo de treino com cartas.',
+    objectives: [{ type: 'defeat', trainer: 'duda', text: 'Vença um duelo contra a Treinadora Duda' }],
+    rewards: { items: { tonico: 2 }, coins: 100 },
   },
   explorar_bosque: {
     id: 'explorar_bosque', name: 'Segredos do bosque', giver: 'Vigia Bento',
@@ -33,8 +39,8 @@ export const QUESTS = {
   },
   desafio_caio: {
     id: 'desafio_caio', name: 'Desafio no bosque', giver: 'Treinador Caio',
-    desc: 'O treinador Caio desafiou você para uma batalha no Bosque Sussurrante.',
-    objectives: [{ type: 'defeat', trainer: 'caio', text: 'Derrote o Treinador Caio' }],
+    desc: 'O treinador Caio desafiou você para um duelo de cartas no Bosque Sussurrante.',
+    objectives: [{ type: 'defeat', trainer: 'caio', text: 'Vença um duelo contra o Treinador Caio' }],
     rewards: { items: { runa_raio: 1, super_tonico: 1 }, coins: 400 },
   },
 };

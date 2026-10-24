@@ -8,8 +8,12 @@
 | Cartas provisórias e baralhos prontos | `src/duel/cards.js` |
 | Motor (rodada simultânea em 9 fases, dano, condições, KOs, vitória) | `src/duel/engine.js` |
 | Adversário do computador | `src/duel/ai.js` |
-| Tela da arena (computador e celular) | `src/duel/arena.js`, `css/duel.css` |
-| Testes (inclui os 17 casos obrigatórios da seção 14) | `tests/duel.test.mjs` |
+| Tela de duelo (computador e celular) | `src/duel/DuelScreen.js`, `css/duel.css` |
+| Visual das cartas (habilidades dentro da carta) | `src/duel/cardView.js` |
+| Deck do personagem, migração e recompensas | `src/core/duelDeck.js`, `src/ui/deckScreen.js` |
+| Adversários do mapa (NPCs) | `src/data/duelists.js` |
+| Testes (inclui os 17 casos obrigatórios da seção 14) | `tests/duel.test.mjs`, `tests/duelDeck.test.mjs` |
+| Teste da aventura no navegador | `node tools/adventure-e2e.mjs <pasta> [mobile]` |
 | Simulação de partidas IA × IA | `node tools/duel-sim.mjs 1000` |
 
 O motor não depende da interface: recebe as ações secretas dos dois jogadores, resolve a
@@ -76,16 +80,24 @@ numa versão 1.1.
 15. **Itens em PvE.** Implementado o "Tônico de Duelo" (cura 30 PV), 2 usos por partida, consome a
     ação principal e é aplicado antes dos ataques, como as curas comuns. Pode ser desligado.
 
-## Pontos que precisam da sua decisão
+## Aventura única (versão atual)
 
-**Editor de decks (menu Coleção/Decks).** Ele foi criado antes do regulamento, com regras
-provisórias diferentes: 8 a 30 cartas, até 3 cópias e cartas de Técnica e Item no deck. O
-regulamento v1.0 define 15 cartas, somente Monstrins e até 2 cópias. O editor não foi alterado.
-Na Arena, o seu deck ativo só aparece como opção se cumprir o regulamento (e se todas as
-espécies tiverem ficha de duelo); caso contrário, a Arena explica o motivo. Sugestão: ajustar o
-editor para as regras do regulamento.
+- Não existe mais Arena separada. Na criação do personagem o jogador escolhe o parceiro
+  (Brasito, Gotinho ou Brotim); ele acompanha no mapa e define um deck inicial válido de 15 cartas.
+- Duelos acontecem no mapa: pessoas com ⚔ acima da cabeça aceitam duelo (Treinadora Duda na praça
+  da Vila Aurora; Treinador Caio no Bosque, que desafia ao avistar o jogador uma vez por visita).
+- Durante o duelo o mapa fica parado; ao final o jogador volta ao mesmo lugar. Recompensas de vitória
+  são entregues só na primeira vitória contra cada NPC; derrota não tem penalidade.
+- Menu → Deck: organiza o deck (exatamente 15, até 2 cópias, só cartas que o jogador possui).
+  Cada Monstrin obtido no RPG que tenha ficha de duelo também vira carta na coleção.
+- Itens: o Tônico de Duelo usa os Tônicos de Frutas do inventário (2 usos por partida, consome a ação).
+- Salvamentos antigos: quem já tinha escolhido o inicial recebe o deck correspondente; as cartas de
+  Monstrin da coleção antiga são aproveitadas (até 2 de cada). Os decks do editor antigo (8–30 cartas,
+  cartas de Técnica/Item) ficam guardados no salvamento, mas não são mais usados.
 
-**Batalhas do mapa.**
+## Multijogador
 
-As batalhas contra treinadores no mapa usam o sistema de batalha do RPG (já sem PV do
-treinador). Sugestão para a v1.1: decidir se elas passam a ser duelos de cartas na Arena.
+Não há servidor nem infraestrutura online no projeto. Por isso **não existe PvP entre jogadores
+reais**; todos os duelos são contra NPCs controlados pelo computador e identificados como NPCs.
+O motor já separa as escolhas secretas dos dois lados (`submit` / `view(pIdx)`), o que facilita
+ligar um servidor no futuro, mas isso não está implementado.

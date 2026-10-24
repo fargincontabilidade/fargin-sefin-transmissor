@@ -15,8 +15,7 @@ import {
 import { art, lookFor } from '../art/registry.js';
 import { sfx } from '../audio/sfx.js';
 import { controls } from './controls.js';
-import { openCollection, openDecks } from './cards.js';
-import { arena } from '../duel/arena.js';
+import { openDeck } from './deckScreen.js';
 
 const elBadge = (elId) => { const e = ELEMENTS[elId]; return h('span', { class: 'badge', style: { background: e.color } }, `${e.icon} ${e.name}`); };
 const rarityBadge = (r) => { const x = RARITY[r]; return h('span', { class: 'badge', style: { background: x.color } }, x.name); };
@@ -82,9 +81,7 @@ export const menus = {
         tile('▶️', 'Continuar', () => ui.close(entry)),
         tile('🐾', 'Equipe', () => this.openTeam()),
         tile('📖', 'Criaturário', () => this.openDex()),
-        tile('🃏', 'Coleção', () => openCollection()),
-        tile('🗂️', 'Decks', () => openDecks()),
-        tile('⚔️', 'Arena de Duelos', () => { ui.close(entry); menus.showHud(false); arena.open({ onExit: () => { menus.showHud(true); menus.refreshHud(); } }); }),
+        tile('🃏', 'Deck', () => openDeck()),
         tile('🎒', 'Inventário', () => this.openBag()),
         tile('🗺️', 'Mapa', () => this.openMap()),
         tile('📜', 'Missões', () => this.openQuests()),

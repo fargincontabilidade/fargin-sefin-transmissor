@@ -277,7 +277,19 @@ export class NpcEntity extends CharacterEntity {
     this.wanderT = 2 + Math.random() * 3;
     this.busy = false;
     this.stepTween = null;
+    // Marcador ⚔: esta pessoa aceita duelos de cartas
+    if (def.duelist) {
+      this.mark = scene.add.text(x, y - 118, '⚔', { fontFamily: 'Nunito, sans-serif', fontSize: '30px', color: '#ffd23f', stroke: '#2a1d00', strokeThickness: 6 }).setOrigin(0.5).setDepth(1e6 - 1);
+      scene.tweens.add({ targets: this.mark, scale: 1.15, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
   }
+
+  sync() {
+    super.sync();
+    if (this.mark) this.mark.setPosition(this.x, this.y - 118);
+  }
+
+  destroy() { super.destroy(); if (this.mark) this.mark.destroy(); }
 
   update(dt, ctx) {
     if (!this.def.wander || this.busy) { this.animate(dt, !!this.stepTween); this.sync(); return; }

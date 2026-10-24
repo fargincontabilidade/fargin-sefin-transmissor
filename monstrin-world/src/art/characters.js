@@ -21,6 +21,7 @@ export const NPC_LOOKS = {
   vigia: { skin: '#b9825c', hair: '#3a2a1e', hairStyle: 'short', hat: '#3f7a46', top: '#4f8f56', topStyle: 'vest', pants: '#3a4a3a', shoes: '#3a2a1e', accent: '#ffd23f' },
   flora: { skin: '#f1c7a0', hair: '#d9d9e0', hairStyle: 'bun', hat: null, top: '#d97a5a', topStyle: 'apron', inner: '#fff1d6', pants: '#7a5a8a', shoes: '#5a3a2a' },
   caio: { skin: '#e8b48c', hair: '#5a3015', hairStyle: 'short', hat: '#2f5fe1', top: '#ff8a2a', topStyle: 'jacket', pants: '#2b3148', shoes: '#ffffff', accent: '#2f5fe1' },
+  duda: { skin: '#f0c4a0', hair: '#e2563a', hairStyle: 'long', hat: '#7a4bd6', top: '#7a4bd6', topStyle: 'jacket', pants: '#2b3148', shoes: '#ffffff', accent: '#ffd23f' },
   nina: { skin: '#a8714c', hair: '#2a1a12', hairStyle: 'curly', hat: null, top: '#ffd23f', topStyle: 'dress', pants: '#ffd23f', shoes: '#ff6f9f' },
   tobias: { skin: '#e8c09c', hair: '#8a8a8a', hairStyle: 'short', hat: '#c9a25a', hatStyle: 'straw', top: '#6aa5d8', topStyle: 'shirt', pants: '#5a4632', shoes: '#3a2a1e' },
   lojista: { skin: '#d9a07a', hair: '#3a2a1e', hairStyle: 'short', hat: null, top: '#2fb3a0', topStyle: 'apron', inner: '#ffffff', pants: '#3a3a4a', shoes: '#3a2a1e' },

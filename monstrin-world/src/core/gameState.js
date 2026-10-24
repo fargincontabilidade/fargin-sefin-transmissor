@@ -3,7 +3,8 @@ import { CONFIG } from '../config.js';
 import { QUESTS } from '../data/quests.js';
 import { getItem } from '../data/items.js';
 import { isFainted, healFull, maxHp } from './monstrin.js';
-import { ensureStarterCards, grantMonstrinCards } from './decks.js';
+import { migrateDuelData, addDuelCards } from './duelDeck.js';
+import { DUEL_CARDS } from '../duel/cards.js';
 
 export const SAVE_VERSION = 1;
 
@@ -51,9 +52,12 @@ export function migrate(data) {
   // nada é curado ao carregar o jogo.
   if (!data.lastHeal || !CENTERS[data.lastHeal.mapId]) data.lastHeal = { ...CENTERS[HOME_CENTER] };
   // Cartas e decks (salvamentos anteriores à versão com cartas)
+  // (campos antigos "cards/decks" ficam guardados, mas não são mais usados)
   data.cards = data.cards || {};
   data.decks = data.decks || [];
   if (data.activeDeckId === undefined) data.activeDeckId = null;
+  // Deck de duelo (Regulamento v1.0): criado a partir do Monstrin inicial
+  migrateDuelData(data);
   return data;
 }
 
@@ -64,7 +68,7 @@ export class Game {
     this.s.decks = this.s.decks || [];
     if (this.s.activeDeckId === undefined) this.s.activeDeckId = null;
     this.listeners = new Set();
-    ensureStarterCards(this); // coleção inicial provisória (uma única vez)
+    migrateDuelData(this.s);
   }
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -84,7 +88,8 @@ export class Game {
     else { this.s.box.push(mon.uid); where = 'box'; }
     if (!this.s.followerUid) this.s.followerUid = mon.uid;
     this.markDex(mon.speciesId, 'caught');
-    grantMonstrinCards(this, mon); // cada Monstrin obtido entra na Coleção de cartas
+    // cada Monstrin obtido também vira uma carta na coleção de duelo
+    if (this.s.duel && DUEL_CARDS[mon.speciesId]) addDuelCards(this, { [mon.speciesId]: 1 });
     this.emit('team');
     return where;
   }

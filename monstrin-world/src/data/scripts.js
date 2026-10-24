@@ -1,10 +1,27 @@
 // Diálogos e eventos dos NPCs. Cada script recebe "ctx" com ações prontas:
 // ctx.say(texto), ctx.ask(texto, opções), ctx.give(item, qtd), ctx.startQuest(id),
-// ctx.healParty(), ctx.chooseStarter(), ctx.trainerBattle(id), ctx.openShop(lista),
+// ctx.healParty(), ctx.chooseStarter(), ctx.duel(duelistaId), ctx.openShop(lista),
 // ctx.openBox(), ctx.flag(k), ctx.setFlag(k), ctx.game, ctx.playerName.
 import { QUESTS } from './quests.js';
 import { speciesList } from './species.js';
+import { DUELISTS } from './duelists.js';
+import { displayName } from '../core/monstrin.js';
 
+// Conversa padrão de um duelista: pergunta, duela e comenta o resultado.
+async function duelTalk(ctx, id, { greet } = {}) {
+  const d = DUELISTS[id];
+  const beaten = ctx.game.s.stats.trainersDefeated.includes(id);
+  await ctx.say(greet || (beaten ? (d.after || 'Quer duelar de novo?') : d.intro));
+  const r = await ctx.ask(beaten ? 'Duelar de novo? (a recompensa só é dada na primeira vitória)' : 'Aceitar o duelo de cartas?', ['Duelar!', 'Agora não']);
+  if (r !== 0) { await ctx.say('Tudo bem. Quando quiser, é só falar comigo.'); return null; }
+  const res = await ctx.duel(id);
+  if (!res) return null;
+  await ctx.say(res.result === 'win' ? d.win : res.result === 'lose' ? d.lose : d.draw);
+  return res;
+}
+
+// Batalhas antigas do RPG contra treinadores (não usadas na aventura atual:
+// treinadores do mapa agora desafiam para duelos de cartas, ver data/duelists.js).
 export const TRAINERS = {
   caio: {
     id: 'caio', name: 'Treinador Caio', look: 'caio', coins: 450,
@@ -12,10 +29,7 @@ export const TRAINERS = {
       { species: 'faiscol', level: 5, temperament: 'agil' },
       { species: 'pedrolho', level: 6, temperament: 'robusto' },
     ],
-    intro: 'Ei, você aí! Treinadores que se cruzam no bosque precisam batalhar! Vamos ver se você é bom mesmo!',
-    lose: 'Uau... Você e seus Monstrins formam uma ótima equipe!',
-    win: 'Ha! Treine mais um pouco e volte para a revanche!',
-    after: 'Sabia que a batalha só acaba quando todos os Monstrins de um lado desmaiam? Se um cair, convoque outro da equipe!',
+    intro: '', lose: '', win: '', after: '',
   },
 };
 
@@ -24,31 +38,31 @@ export const SHOP_STOCK = ['selo_vinculo', 'selo_aurora', 'tonico', 'super_tonic
 export const SCRIPTS = {
   async iris(ctx) {
     const name = ctx.playerName;
+    // salvamentos antigos que ainda não escolheram o inicial
     if (!ctx.flag('starterChosen')) {
-      if (!ctx.flag('metIris')) {
-        await ctx.say(`Ah, ${name}! Que bom que chegou. Eu sou a Professora Íris e estudo os Monstrins da região de Aurora.`);
-        await ctx.say('Monstrins são criaturas incríveis que vivem nas florestas, rios, cavernas... Cada um é único, com sua própria personalidade!');
-        await ctx.say('Hoje você vai começar sua jornada. Preparei três Monstrins para você conhecer. Escolha com o coração!');
-        ctx.setFlag('metIris');
-      }
+      await ctx.say(`Ah, ${name}! Eu sou a Professora Íris. Escolha um Monstrin parceiro: ele também define o seu deck de cartas.`);
       const sp = await ctx.chooseStarter();
       if (!sp) { await ctx.say('Sem pressa! Fale comigo quando estiver pronto.'); return; }
       const mon = await ctx.giveStarter(sp);
-      await ctx.say(`${mon} vai ser seu parceiro de aventuras. Ele vai seguir você por onde for!`);
-      await ctx.say('Leve também estes Selos de Vínculo. Enfraqueça um Monstrin selvagem e use um selo para criar um laço com ele.');
-      ctx.startQuest('primeira_captura');
-      await ctx.say('O Bosque Sussurrante fica a leste da vila. Avise o Vigia Bento que você já tem um Monstrin! Boa sorte!');
+      await ctx.say(`${mon} vai ser seu parceiro de aventuras. Você também recebeu um deck de 15 cartas!`);
+    }
+    if (!ctx.flag('metIris')) {
+      const f = ctx.game.follower();
+      await ctx.say(`Ah, ${name}! Que bom que chegou${f ? ` com ${displayName(f)}` : ''}. Eu sou a Professora Íris e estudo os Monstrins da região de Aurora.`);
+      await ctx.say('Por aqui, treinadores se desafiam em duelos de cartas. Cada carta é um Monstrin com habilidades próprias.');
+      await ctx.say('No duelo, os dois escolhem a ação em segredo e tudo é revelado ao mesmo tempo. Vence quem fizer 5 KOs primeiro.');
+      await ctx.say('Toque numa carta para ver as habilidades dela. Seu deck fica no Menu, no botão "Deck".');
+      ctx.setFlag('metIris');
+      ctx.startQuest('treino_duda');
+      await ctx.say('A Treinadora Duda está na praça, ao lado do poço. Ela adora treinar iniciantes. Vá desafiá-la!');
       return;
     }
-    const dex = ctx.game.s.dex;
-    const caught = Object.values(dex).filter((v) => v === 'caught').length;
-    const seen = Object.keys(dex).length;
-    if (ctx.game.questStatus('primeira_captura') === 'active') {
-      await ctx.say('Lembre-se: deixe o Monstrin selvagem com pouca vida antes de usar o Selo de Vínculo. Assim a chance de captura aumenta!');
+    if (ctx.game.questStatus('treino_duda') === 'active') {
+      await ctx.say('A Treinadora Duda está na praça. Dica: no seu turno, escolha uma habilidade do seu principal e confirme. Use os secundários para trocar ou usar o especial.');
       return;
     }
-    await ctx.say(`Seu Criaturário já tem ${seen} de ${speciesList().length} espécies vistas e ${caught} capturadas. Continue explorando!`);
-    if (caught >= 3) await ctx.say('Dizem que na Clareira das Pedras vive um Monstrin raríssimo feito de cristal... Será verdade?');
+    const rec = ctx.game.s.duel?.record || { wins: 0 };
+    await ctx.say(`Você já venceu ${rec.wins} duelo(s)! No Bosque Sussurrante, a leste, o Treinador Caio procura adversários.`);
   },
 
   async starter_machine(ctx) {
@@ -91,7 +105,7 @@ export const SCRIPTS = {
 
   async nina(ctx) {
     const lines = [
-      'Os Monstrins selvagens andam livres no Bosque Sussurrante! É só chegar pertinho para batalhar.',
+      'Quem tem ⚔ em cima da cabeça aceita duelos de cartas! A Duda está bem ali na praça.',
       'Sabia que dois Monstrins da mesma espécie nunca são iguais? Cada um tem seu jeitinho!',
       'Eu quero um Fagulino! Eles são tímidos e fogem quando a gente corre atrás...',
       'Fogo vence Planta, Planta vence Água e Água vence Fogo! E a Pedra aguenta bem o Fogo e o Elétrico.',
@@ -100,8 +114,8 @@ export const SCRIPTS = {
   },
 
   async tobias(ctx) {
-    await ctx.say('Nos meus tempos de treinador, eu sempre dizia: Monstrin cansado é Monstrin mais fácil de capturar!');
-    await ctx.say('E se todos os seus Monstrins desmaiarem, você volta ao Centro Monstrin. É só falar com a Enfermeira Lia para recuperá-los.');
+    await ctx.say('Nos meus tempos de duelista, eu sempre dizia: guarde energia para o especial dos secundários!');
+    await ctx.say('E lembre-se: perder um duelo não faz mal nenhum. Ajuste o deck e tente de novo.');
   },
 
   async flora(ctx) {
@@ -135,17 +149,17 @@ export const SCRIPTS = {
       ctx.startQuest('explorar_bosque');
       return;
     }
-    await ctx.say('Cuidado no bosque! E lembre-se: dá para fugir de batalhas contra Monstrins selvagens, mas não de treinadores.');
+    await ctx.say('Cuidado no bosque! O Treinador Caio desafia todo mundo que passa na frente dele.');
   },
   async bento_block(ctx) { return SCRIPTS.bento(ctx); },
 
+  async duda(ctx) {
+    await duelTalk(ctx, 'duda');
+  },
+
   async caio(ctx) {
-    const tr = TRAINERS.caio;
-    if (ctx.game.s.stats.trainersDefeated.includes('caio')) { await ctx.say(tr.after); return; }
     if (!ctx.game.questStatus('desafio_caio')) ctx.startQuest('desafio_caio');
-    await ctx.say(tr.intro);
-    const result = await ctx.trainerBattle('caio');
-    if (result === 'win') await ctx.say(tr.lose);
+    await duelTalk(ctx, 'caio');
   },
 };
 
